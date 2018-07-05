@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/receipt_details"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/colorPrimaryDark"
+    android:onClick="ReceiptDetailsOnClick"
+    app:layout_behavior="@string/bottom_sheet_behavior">
+
+
+    <android.support.constraint.Guideline
+        android:id="@+id/gl_middle_vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent=".5" />
+<!-- consider making heading and tick larger -->
+    <TextView
+        android:id="@+id/tv_edit_new_heading"
+        style="@style/receipt_detail_style"
+        android:text="New Receipt"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="16dp" />
+
+    <ImageView
+        android:id="@+id/iv_save_receipt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="80dp"
+        android:layout_marginTop="8dp"
+        android:contentDescription="Save Receipt"
+        app:layout_constraintStart_toEndOf="@id/gl_middle_vertical"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/ic_done_24dp" />
+
+
+    <TextView
+        android:id="@+id/tv_ocr_company_name"
+        style="@style/receipt_detail_style"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_edit_new_heading"
+        tools:hint="BITH" />
+
+    <EditText
+        android:id="@+id/et_company_name"
+        style="@style/receipt_detail_style"
+        android:hint="Company Name"
+        android:inputType="textNoSuggestions"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_ocr_company_name"
+        app:layout_constraintStart_toEndOf="@id/gl_middle_vertical"
+        app:layout_constraintTop_toTopOf="@+id/tv_ocr_company_name"
+        tools:hint="BIM" />
+
+    <TextView
+        android:id="@+id/tv_ocr_amount"
+        style="@style/receipt_detail_style"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_ocr_company_name"
+        tools:hint="23.00" />
+
+    <EditText
+        android:id="@+id/et_amount"
+        style="@style/receipt_detail_style"
+        android:hint="Amount"
+        android:inputType="numberDecimal"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_ocr_amount"
+        app:layout_constraintStart_toEndOf="@id/gl_middle_vertical"
+        app:layout_constraintTop_toTopOf="@+id/tv_ocr_amount"
+        tools:hint="5,00" />
+
+    <TextView
+        android:id="@+id/tv_ocr_date"
+        style="@style/receipt_detail_style"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_ocr_amount"
+        tools:hint="23/06/2018" />
+
+    <EditText
+        android:id="@+id/et_date"
+        style="@style/receipt_detail_style"
+        android:hint="Date"
+        android:inputType="date"
+        android:onClick="showDatePickerDialog"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_ocr_date"
+        app:layout_constraintStart_toEndOf="@id/gl_middle_vertical"
+        app:layout_constraintTop_toTopOf="@+id/tv_ocr_date"
+        tools:hint="23/06/2018" />
+
+    <TextView
+        android:id="@+id/tv_ocr_payment_type"
+        style="@style/receipt_detail_style"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_ocr_date"
+        tools:hint="Kredi" />
+
+    <Spinner
+        android:id="@+id/sp_payment_type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_ocr_payment_type"
+        app:layout_constraintStart_toEndOf="@id/gl_middle_vertical"
+        app:layout_constraintTop_toTopOf="@+id/tv_ocr_payment_type"
+        tools:hint="Kredi" />
+
+    <Spinner
+        android:id="@+id/sp_category"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintStart_toEndOf="@id/gl_middle_vertical"
+        app:layout_constraintTop_toBottomOf="@+id/sp_payment_type"
+        tools:hint="Groceries" />
+
+    <EditText
+        android:id="@+id/et_comment"
+        style="@style/receipt_detail_style"
+        android:layout_marginStart="8dp"
+        android:hint="Comment"
+        android:inputType="textNoSuggestions"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sp_category"
+        tools:hint="Comment" />
+
+</android.support.constraint.ConstraintLayout>

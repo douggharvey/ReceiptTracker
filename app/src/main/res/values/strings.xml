@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ReceiptTracker</string>
+    <string name="ADD_RECEIPT_EXTRA">ADD_RECEIPT_EXTRA</string>
+</resources>

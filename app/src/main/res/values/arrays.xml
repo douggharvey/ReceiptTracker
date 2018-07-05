@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="payment_type_arrays">
+        <item>Credit Card</item>
+        <item>Cash</item>
+        <item>Account</item>
+    </string-array>
+    <string-array name="category_array">
+        <item>[Category]</item>
+        <item>Groceries</item>
+        <item>Dining</item>
+        <item>Medicine</item>
+        <item>Clothes</item>
+        <item>Transport</item>
+        <item>Utilities:Electricity</item>
+        <item>Utilities:Water</item>
+        <item>Electronic</item>
+        <item>Insurance:Health</item>
+        <item>Insurance:Property</item>
+        <item>Utilities: Telephone</item>
+        <item>Utilities: Internet</item>
+        <item>Gas</item>
+        <item>Cosmetic</item>
+        <item>Doctor</item>
+        <item>Tax: Property</item>
+        <item>Rates: Council</item>
+        <item>Entertainment</item>
+        <item>Bank Fees</item>
+        <item>Miscellaneous</item>
+        <item>Presents</item>
+        <item>Purchases</item>
+        <item>Travel</item>
+    </string-array>
+</resources>
