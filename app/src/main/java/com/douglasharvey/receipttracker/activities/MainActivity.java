@@ -43,7 +43,6 @@ public class MainActivity extends AppCompatActivity {
         receiptViewModel.getAllReceipts().observe(this, new Observer<List<Receipt>>() {
             @Override
             public void onChanged(@Nullable final List<Receipt> receipts) {
-                // Update the cached copy of the words in the adapter.
                 adapter.setReceipts(receipts);
             }
         });
@@ -54,7 +53,5 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA), true);
                 startActivityForResult(intent, NEW_RECEIPT_ACTIVITY_REQUEST_CODE);
                                          }}); //TODO NEED RESULT?
-
-
     }
 }

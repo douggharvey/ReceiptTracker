@@ -1,4 +1,13 @@
 <resources>
     <string name="app_name">ReceiptTracker</string>
     <string name="ADD_RECEIPT_EXTRA">ADD_RECEIPT_EXTRA</string>
+    <string name="file_created">Created file: %1$s.</string>
+    <string name="file_create_error">Error while trying to create the file.</string>
+    <string name="UPLOAD_FILE_NAME_EXTRA">UPLOAD_FILE_NAME</string>
+    <string name="UPLOAD_FILE_LOCATION_EXTRA">UPLOAD_FILE_LOCATION</string>
+    <string name="select_folder">Select a folder</string>
+    <string name="folder_not_selected">No folder selected, can not continue</string>
+    <string name="receiptTrackerFolderDriveID">driveID</string>
+    <string name="receiptTrackerFolderIDmissing">missing</string>
+    <string name="receiptTrackerFolderTitle">ReceiptTracker</string>
 </resources>

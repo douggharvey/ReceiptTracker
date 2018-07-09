@@ -10,7 +10,7 @@ import android.support.annotation.NonNull;
 
 import timber.log.Timber;
 
-@Database(entities = {Receipt.class}, version = 4, exportSchema = false)
+@Database(entities = {Receipt.class}, version = 5, exportSchema = false)
 public abstract class ReceiptRoomDatabase extends RoomDatabase {
     public abstract ReceiptDao receiptDao();
 

@@ -24,8 +24,7 @@ public class Receipt {
     @ColumnInfo(name = "receipt_date")
     private Date receiptDate;
 
-    @ColumnInfo(name = "file_id")
-    private String fileID;
+    private String file;
 
     public Receipt() {
     }
@@ -38,12 +37,12 @@ public class Receipt {
         this.receiptDate = receiptDate;
     }
 
-    public String getFileID() {
-        return fileID;
+    public String getFile() {
+        return file;
     }
 
-    public void setFileID(String fileID) {
-        this.fileID = fileID;
+    public void setFile(String file) {
+        this.file = file;
     }
 
 

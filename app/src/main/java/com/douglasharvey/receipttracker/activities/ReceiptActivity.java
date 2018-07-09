@@ -14,6 +14,7 @@ import android.support.design.widget.BottomSheetBehavior;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
@@ -22,6 +23,7 @@ import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.SpinnerAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.davemorrissey.labs.subscaleview.ImageSource;
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView;
@@ -30,6 +32,7 @@ import com.douglasharvey.receipttracker.data.Receipt;
 import com.douglasharvey.receipttracker.data.ReceiptRepository;
 import com.douglasharvey.receipttracker.data.ReceiptResult;
 import com.douglasharvey.receipttracker.fragments.DatePickerFragment;
+import com.douglasharvey.receipttracker.utilities.FileUtils;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.ml.vision.FirebaseVision;
@@ -37,7 +40,13 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImage;
 import com.google.firebase.ml.vision.text.FirebaseVisionText;
 import com.google.firebase.ml.vision.text.FirebaseVisionTextDetector;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -47,6 +56,7 @@ import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import timber.log.Timber;
 
 import static com.douglasharvey.receipttracker.utilities.ProcessTextRecognition.processTextRecognitionResult;
 
@@ -89,6 +99,8 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
     private static final String STATE_SELECTED = "selected";
     BottomSheetBehavior sheetBehavior;
     int peekHeight = 100;
+    String sourceFileName;
+    File sourceLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,6 +128,7 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         ivSaveReceipt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Timber.d("onClick: ");
                 ReceiptRepository receiptRepository = new ReceiptRepository(getApplication());
                 Receipt receipt = new Receipt();
                 receipt.setCompany(etCompanyName.getText().toString());
@@ -123,15 +136,32 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
                 receipt.setCategory(1);
                 receipt.setComment(etComment.getText().toString());
                 receipt.setType(2);
+                receipt.setFile(selectedDocument.toString());
                 DateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
                 try {
                     receipt.setReceiptDate(formatter.parse(etDate.getText().toString()));
                 } catch (ParseException e) {
                     e.printStackTrace();
                 }
-
-                //todo add date & url later
                 receiptRepository.insert(receipt);
+                setSourceVariables();
+                //renameFile();
+
+                // renaming to app directory prior to uploading to google drive
+                // securing so it cannot be deleted prior to upload
+                // also removing it from source will prevent user from trying to add this receipt again.
+                //Note: if receipt record is deleted should I move it back??
+
+                //when exporting data, can later query metadata to get full link to file
+                //getAlternateLink seems ok.
+                // can do this processing in a service instead, no rush to upload and this way
+                //can easily use the id as part of the file name.
+                //here may consider renaming file into app directory so that is can be reviewed as needed.
+                //need flag on database to show full location.
+                Intent intent = new Intent(ReceiptActivity.this, UploadFileActivity.class);
+                intent.putExtra(getString(R.string.UPLOAD_FILE_NAME_EXTRA),sourceFileName);
+                intent.putExtra(getString(R.string.UPLOAD_FILE_LOCATION_EXTRA),sourceLocation.toString()); //TODO after rename - will be targetLocation
+                startActivity(intent);
                 finish();
             }
         });
@@ -140,14 +170,14 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         sheetBehavior.setPeekHeight(0);
         sheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
-            public void onStateChanged(View bottomSheet, int newState) {
+            public void onStateChanged(@NonNull View bottomSheet, int newState) {
                 if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
                     sheetBehavior.setPeekHeight(peekHeight);
                 }
             }
 
             @Override
-            public void onSlide(View bottomSheet, float slideOffset) {
+            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
                 if (slideOffset == 0) {
                     fabAddReceipt.show();
                 }
@@ -168,6 +198,72 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         spCategory.setSelection(0);
     }
 
+    private void renameFile() {
+
+        File targetLocation = new File(this.getExternalFilesDir(null) , "/"+sourceFileName);
+        //todo need to add obtain permissions code see busy coder or easypermissions
+        //or manually update permission after each clean install!
+
+        //todo consider whether to update file field on database
+       if(sourceLocation.renameTo(targetLocation)){
+           Toast.makeText(this, "Move file successful", Toast.LENGTH_SHORT).show();
+        }else{
+           Toast.makeText(this, "Move file failed", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private boolean setSourceVariables() {
+        sourceLocation=null;
+
+        try {
+            String path = FileUtils.getPath(this, selectedDocument);
+            if (path==null) return true;
+            sourceLocation = new File(path);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        Timber.d("setSourceVariables: sourceLocation: "+ sourceLocation.toString());
+
+        sourceFileName = sourceLocation.getName();
+        return false;
+    }
+
+    private void moveFile(String inputFile, String outputFile) {
+
+        InputStream in = null;
+        OutputStream out = null;
+        try {
+
+            in = new FileInputStream(inputFile);
+            out = new FileOutputStream(outputFile);
+
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            in.close();
+            in = null;
+
+            // write the output file
+            out.flush();
+            out.close();
+            out = null;
+
+            // delete the original file
+            //new File(inputFile).delete();
+
+
+        }
+
+        catch (FileNotFoundException fnfe1) {
+            Log.e("tag", fnfe1.getMessage());
+        }
+        catch (Exception e) {
+            Log.e("tag", e.getMessage());
+        }
+
+    }
     public void setSpinnerToValue(Spinner spinner, String value) {
         int index = 0;
         SpinnerAdapter adapter = spinner.getAdapter();
@@ -209,6 +305,7 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
                                     Intent data) {
         if (resultCode == Activity.RESULT_OK) {
             selectedDocument = data.getData();
+            Timber.d("onActivityResult: "+selectedDocument.toString());
             show(selectedDocument);
             runTextRecognition();
         }
@@ -387,4 +484,6 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
     public void onFinishEditDialog(int year, int month, int day) {
         etDate.setText(day + "/" + (month + 1) + "/" + year); //todo correctly format the date
     }
+
+
 }
