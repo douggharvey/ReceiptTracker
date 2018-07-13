@@ -10,17 +10,34 @@ import android.widget.TextView;
 import com.douglasharvey.receipttracker.R;
 import com.douglasharvey.receipttracker.data.Receipt;
 
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.List;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
 public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.ReceiptViewHolder> {
+    Context context;
 
     class ReceiptViewHolder extends RecyclerView.ViewHolder {
-        private final TextView companyItemView;
+
+        @BindView(R.id.tv_company)
+        TextView tvCompany;
+        @BindView(R.id.tv_date)
+        TextView tvDate;
+        @BindView(R.id.tv_amount)
+        TextView tvAmount;
+        @BindView(R.id.tv_payment_type)
+        TextView tvPaymentType;
+        @BindView(R.id.tv_category)
+        TextView tvCategory;
+        @BindView(R.id.tv_comment)
+        TextView tvComment;
 
         private ReceiptViewHolder(View itemView) {
             super(itemView);
-            //TODO butterknife
-            companyItemView = itemView.findViewById(R.id.company);
+            ButterKnife.bind(this, itemView);
         }
     }
 
@@ -29,6 +46,7 @@ public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.
 
     public ReceiptListAdapter(Context context) {
         inflater = LayoutInflater.from(context);
+        this.context = context;
     }
 
     @Override
@@ -40,11 +58,19 @@ public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.
     @Override
     public void onBindViewHolder(ReceiptViewHolder holder, int position) {
         if (receipts != null) {
+            String[] categoryArray = context.getResources().getStringArray(R.array.category_array);
+            String[] paymentTypeArray = context.getResources().getStringArray(R.array.payment_type_array);
+
             Receipt current = receipts.get(position);
-            holder.companyItemView.setText(current.getCompany()+current.getReceiptDate()); //todo own field, format properly - consider time
+            holder.tvCompany.setText(current.getCompany());
+            holder.tvDate.setText(new SimpleDateFormat("dd/MM/yy").format(current.getReceiptDate()));
+            holder.tvAmount.setText(new DecimalFormat("#####0.00").format(current.getAmount()));
+            holder.tvCategory.setText(categoryArray[current.getCategory()]);
+            holder.tvComment.setText(current.getComment());
+            holder.tvPaymentType.setText(paymentTypeArray[current.getType()]);
         } else {
             // Covers the case of data not being ready yet.
-            holder.companyItemView.setText("No Receipt");
+            holder.tvCompany.setText("No Receipt");
         }
     }
 

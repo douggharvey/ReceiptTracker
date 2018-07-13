@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="payment_type_arrays">
+    <string-array name="payment_type_array">
         <item>Credit Card</item>
         <item>Cash</item>
         <item>Account</item>

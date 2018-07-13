@@ -9,6 +9,7 @@ import com.google.android.gms.drive.DriveContents;
 import com.google.android.gms.drive.DriveFolder;
 import com.google.android.gms.drive.MetadataChangeSet;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -22,7 +23,7 @@ public class UploadFileActivity extends BaseDemoActivity {
     @Override
     protected void onDriveClientReady() {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String driveID = sharedPreferences.getString(getString(R.string.receiptTrackerFolderDriveID), getString(R.string.receiptTrackerFolderIDmissing));
+        String driveID = sharedPreferences.getString(getString(R.string.receiptTrackerFolderDriveID), getString(R.string.receiptTrackerFolderIDmissing)); //should also query drive to ensure it still exists
         if (driveID.equals(getString(R.string.receiptTrackerFolderIDmissing))) {
             pickFolder()
                     .addOnSuccessListener(this,
@@ -35,8 +36,7 @@ public class UploadFileActivity extends BaseDemoActivity {
                         showMessage(getString(R.string.folder_not_selected));
                         finish();
                     });
-        }
-        else {
+        } else {
             uploadFile(decodeFromString(driveID).asDriveFolder());
             finish();
         }
@@ -49,7 +49,6 @@ public class UploadFileActivity extends BaseDemoActivity {
         MetadataChangeSet changeSet = new MetadataChangeSet.Builder()
                 .setTitle(getString(R.string.receiptTrackerFolderTitle))
                 .setMimeType(DriveFolder.MIME_TYPE)
-                .setStarred(true)
                 .build();
 
         getDriveResourceClient()
@@ -61,8 +60,8 @@ public class UploadFileActivity extends BaseDemoActivity {
                             uploadFile(driveFolder);
                             SharedPreferences.Editor editor = sharedPreferences.edit();
                             String folderDriveID = getString(R.string.receiptTrackerFolderDriveID);
-                            editor.putString(folderDriveID,driveFolder.getDriveId().encodeToString() );
-                            editor.apply();
+                            editor.putString(folderDriveID, driveFolder.getDriveId().encodeToString());
+                            editor.apply(); //todo consider also saving directory and give option to change it for future receipts
                             finish();
                         })
                 .addOnFailureListener(this, e -> {
@@ -87,7 +86,6 @@ public class UploadFileActivity extends BaseDemoActivity {
 
                     MetadataChangeSet changeSet = new MetadataChangeSet.Builder()
                             .setTitle(uploadFileName)
-                            .setMimeType("application/pdf")
                             .setPinned(true) // only if needed, offline does not seem to work. setstarred?
                             .build();
 
@@ -97,6 +95,7 @@ public class UploadFileActivity extends BaseDemoActivity {
                         driveFile -> {
                             showMessage(getString(R.string.file_created,
                                     driveFile.getDriveId().encodeToString()));
+
                             finish();
                         })
                 .addOnFailureListener(this, e -> {
@@ -119,11 +118,10 @@ public class UploadFileActivity extends BaseDemoActivity {
             outputStream.flush();
             outputStream.close();
 
-            // todo delete the original file
-            //new File(inputFile).delete();
+            new File(uploadFileLocation).delete();
 
         } catch (Exception e) {
-            Timber.d("writeFile: "+ e.getMessage());
+            Timber.d("writeFile: " + e.getMessage());
         }
     }
 }

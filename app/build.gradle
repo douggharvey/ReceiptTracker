@@ -55,7 +55,8 @@ dependencies {
     //Google Drive
     implementation 'com.google.android.gms:play-services-auth:15.0.1'
     implementation 'com.google.android.gms:play-services-drive:15.0.1'
-
+    //OpenCSV
+    implementation group: 'com.opencsv', name: 'opencsv', version: '4.1'
 
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'

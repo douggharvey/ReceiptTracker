@@ -14,7 +14,6 @@ import android.support.design.widget.BottomSheetBehavior;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
@@ -41,12 +40,7 @@ import com.google.firebase.ml.vision.text.FirebaseVisionText;
 import com.google.firebase.ml.vision.text.FirebaseVisionTextDetector;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -101,6 +95,7 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
     int peekHeight = 100;
     String sourceFileName;
     File sourceLocation;
+    File newFileName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,7 +103,7 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         setContentView(R.layout.receipt_main);
         ButterKnife.bind(this);
         Intent intent = getIntent();
-        if (intent.getBooleanExtra(getString(R.string.ADD_RECEIPT_EXTRA),false)) addReceipt();
+        if (intent.getBooleanExtra(getString(R.string.ADD_RECEIPT_EXTRA), false)) addReceipt();
 
         if (savedInstanceState != null) {
             selectedDocument = savedInstanceState.getParcelable(STATE_SELECTED);
@@ -128,14 +123,16 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         ivSaveReceipt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Timber.d("onClick: ");
+                //todo need validation for dates and amounts , name
                 ReceiptRepository receiptRepository = new ReceiptRepository(getApplication());
                 Receipt receipt = new Receipt();
                 receipt.setCompany(etCompanyName.getText().toString());
                 receipt.setAmount(Float.parseFloat(etAmount.getText().toString()));
-                receipt.setCategory(1);
+                int selectedCategoryPosition = spCategory.getSelectedItemPosition();
+                receipt.setCategory(selectedCategoryPosition);
                 receipt.setComment(etComment.getText().toString());
-                receipt.setType(2);
+                int selectedTypePosition = spPaymentType.getSelectedItemPosition();
+                receipt.setType(selectedTypePosition);
                 receipt.setFile(selectedDocument.toString());
                 DateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
                 try {
@@ -145,12 +142,9 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
                 }
                 receiptRepository.insert(receipt);
                 setSourceVariables();
-                //renameFile();
-
-                // renaming to app directory prior to uploading to google drive
-                // securing so it cannot be deleted prior to upload
-                // also removing it from source will prevent user from trying to add this receipt again.
-                //Note: if receipt record is deleted should I move it back??
+                // renaming file to app directory prior to uploading to google drive
+                // this will prevent user from trying to add this receipt again.
+                boolean renameResult = renameFile();
 
                 //when exporting data, can later query metadata to get full link to file
                 //getAlternateLink seems ok.
@@ -158,10 +152,12 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
                 //can easily use the id as part of the file name.
                 //here may consider renaming file into app directory so that is can be reviewed as needed.
                 //need flag on database to show full location.
-                Intent intent = new Intent(ReceiptActivity.this, UploadFileActivity.class);
-                intent.putExtra(getString(R.string.UPLOAD_FILE_NAME_EXTRA),sourceFileName);
-                intent.putExtra(getString(R.string.UPLOAD_FILE_LOCATION_EXTRA),sourceLocation.toString()); //TODO after rename - will be targetLocation
-                startActivity(intent);
+                if (renameResult) {
+                    Intent intent = new Intent(ReceiptActivity.this, UploadFileActivity.class);
+                    intent.putExtra(getString(R.string.UPLOAD_FILE_NAME_EXTRA), sourceFileName);
+                    intent.putExtra(getString(R.string.UPLOAD_FILE_LOCATION_EXTRA), newFileName.toString());
+                    startActivity(intent);
+                }
                 finish();
             }
         });
@@ -187,7 +183,7 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
             }
         });
         etDate.setShowSoftInputOnFocus(false);
-        ArrayAdapter paymentTypeAdapter = ArrayAdapter.createFromResource(this, R.array.payment_type_arrays, R.layout.spinner_payment_type);
+        ArrayAdapter paymentTypeAdapter = ArrayAdapter.createFromResource(this, R.array.payment_type_array, R.layout.spinner_payment_type);
         paymentTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spPaymentType.setAdapter(paymentTypeAdapter);
         spPaymentType.setSelection(0);
@@ -195,75 +191,42 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         ArrayAdapter categoryAdapter = ArrayAdapter.createFromResource(this, R.array.category_array, R.layout.spinner_category);
         categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spCategory.setAdapter(categoryAdapter);
-        spCategory.setSelection(0);
+        spCategory.setSelection(1); //default to groceries
     }
 
-    private void renameFile() {
-
-        File targetLocation = new File(this.getExternalFilesDir(null) , "/"+sourceFileName);
+    private boolean renameFile() {
+        newFileName = new File(this.getExternalFilesDir(null), "/" + sourceFileName);
         //todo need to add obtain permissions code see busy coder or easypermissions
         //or manually update permission after each clean install!
 
         //todo consider whether to update file field on database
-       if(sourceLocation.renameTo(targetLocation)){
-           Toast.makeText(this, "Move file successful", Toast.LENGTH_SHORT).show();
-        }else{
-           Toast.makeText(this, "Move file failed", Toast.LENGTH_SHORT).show();
+        //TODO java.lang.NullPointerException: Attempt to invoke virtual method 'boolean java.io.File.renameTo(java.io.File)' on a null object reference
+        //this happens when file is on google drive?
+        boolean renameResult = sourceLocation.renameTo(newFileName);
+        if (renameResult) {
+            Toast.makeText(this, "Move file successful", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Move file failed: check permissions", Toast.LENGTH_SHORT).show();
         }
+        return renameResult;
     }
 
     private boolean setSourceVariables() {
-        sourceLocation=null;
+        sourceLocation = null;
 
         try {
             String path = FileUtils.getPath(this, selectedDocument);
-            if (path==null) return true;
+            if (path == null) return true;
             sourceLocation = new File(path);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Timber.d("setSourceVariables: sourceLocation: "+ sourceLocation.toString());
+        Timber.d("setSourceVariables: sourceLocation: " + sourceLocation.toString());
 
         sourceFileName = sourceLocation.getName();
         return false;
     }
 
-    private void moveFile(String inputFile, String outputFile) {
-
-        InputStream in = null;
-        OutputStream out = null;
-        try {
-
-            in = new FileInputStream(inputFile);
-            out = new FileOutputStream(outputFile);
-
-            byte[] buffer = new byte[1024];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
-            }
-            in.close();
-            in = null;
-
-            // write the output file
-            out.flush();
-            out.close();
-            out = null;
-
-            // delete the original file
-            //new File(inputFile).delete();
-
-
-        }
-
-        catch (FileNotFoundException fnfe1) {
-            Log.e("tag", fnfe1.getMessage());
-        }
-        catch (Exception e) {
-            Log.e("tag", e.getMessage());
-        }
-
-    }
     public void setSpinnerToValue(Spinner spinner, String value) {
         int index = 0;
         SpinnerAdapter adapter = spinner.getAdapter();
@@ -305,7 +268,6 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
                                     Intent data) {
         if (resultCode == Activity.RESULT_OK) {
             selectedDocument = data.getData();
-            Timber.d("onActivityResult: "+selectedDocument.toString());
             show(selectedDocument);
             runTextRecognition();
         }
@@ -315,7 +277,6 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         ParcelFileDescriptor parcelFileDescriptor = null;
         PdfRenderer renderer = null;
         selectedImage = null;
-        //ParcelFileDescriptor pfd =  openFileDescriptor(uri, "r");
         try {
             parcelFileDescriptor = this.getContentResolver().openFileDescriptor(
                     selectedDocument, "r");
@@ -323,7 +284,7 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         {
             e.printStackTrace();
         }
-
+        //todo prevent crash for java.lang.NullPointerException: input cannot be null. must check if file exists above, before attempting to continue
         try {
             renderer = new PdfRenderer(parcelFileDescriptor); //todo prevent this warning
         } catch (IOException e) {
@@ -350,13 +311,12 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         FirebaseVisionImage image = FirebaseVisionImage.fromBitmap(selectedImage);
         FirebaseVisionTextDetector detector = FirebaseVision.getInstance()
                 .getVisionTextDetector();
-        //mButton.setEnabled(false);
+
         detector.detectInImage(image)
                 .addOnSuccessListener(
                         new OnSuccessListener<FirebaseVisionText>() {
                             @Override
                             public void onSuccess(FirebaseVisionText texts) {
-                                //                      mButton.setEnabled(true);
                                 ReceiptResult receiptResult = new ReceiptResult();
 
                                 List<FirebaseVisionText.Element> elements = processTextRecognitionResult(texts, receiptResult);
@@ -371,15 +331,8 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
                                 tvOcrPaymentType.setText(receiptResult.getPaymentType());
                                 setPaymentTypeSpinner(receiptResult);
                                 sheetBehavior.setPeekHeight(peekHeight);
-                                spCategory.setSelection(0);
+                                spCategory.setSelection(1); // default to groceries
 
-                                //      etPaymentType.setText(receiptResult.getPaymentType());
-
-                           /*     tvReceiptDetails.setText("Receipt details:\n\nCompany: " + receiptResult.getCompany());
-                                tvReceiptDetails.append("\n\nAmount: " + receiptResult.getAmount());
-                                tvReceiptDetails.append("\n\nDate: " + receiptResult.getDate());
-                                tvReceiptDetails.append("\n\nPayment Type: " + receiptResult.getPaymentType());
-*/
                                 if (elements != null) {
                                     for (int m = 0; m < elements.size(); m++) {
                                         GraphicOverlay.Graphic textGraphic = new TextGraphic(graphicOverlay, elements.get(m));

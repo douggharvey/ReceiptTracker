@@ -13,11 +13,15 @@ public class ReceiptRepository {
     public ReceiptRepository(Application application) {
         ReceiptRoomDatabase db = ReceiptRoomDatabase.getDatabase(application);
         this.receiptDao = db.receiptDao();
-        this.allReceipts = receiptDao.getReceipts();
+        this.allReceipts = receiptDao.getReceiptsLiveData();
     }
 
     LiveData<List<Receipt>> getAllReceipts() {
         return allReceipts;
+    }
+
+    public List<Receipt> getReceipts() {
+        return receiptDao.getReceipts();
     }
 
     public void insert (Receipt receipt) {

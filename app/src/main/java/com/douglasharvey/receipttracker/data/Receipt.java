@@ -26,6 +26,10 @@ public class Receipt {
 
     private String file;
 
+    private int type;
+
+    private int category;
+
     public Receipt() {
     }
 
@@ -45,7 +49,6 @@ public class Receipt {
         this.file = file;
     }
 
-
     public void setId(@NonNull int id) {
         this.id = id;
     }
@@ -57,7 +60,6 @@ public class Receipt {
     public void setAmount(float amount) {
         this.amount = amount;
     }
-
 
     public void setType(int type) {
         this.type = type;
@@ -71,9 +73,6 @@ public class Receipt {
         this.comment = comment;
     }
 
-    private int type;
-
-    private int category;
 
     @NonNull
     public int getId() {
