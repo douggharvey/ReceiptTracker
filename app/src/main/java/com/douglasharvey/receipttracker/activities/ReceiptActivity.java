@@ -13,7 +13,6 @@ import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.DialogFragment;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
@@ -32,8 +31,12 @@ import com.douglasharvey.receipttracker.data.ReceiptRepository;
 import com.douglasharvey.receipttracker.data.ReceiptResult;
 import com.douglasharvey.receipttracker.fragments.DatePickerFragment;
 import com.douglasharvey.receipttracker.utilities.FileUtils;
+import com.google.android.gms.drive.DriveContents;
+import com.google.android.gms.drive.DriveFile;
+import com.google.android.gms.drive.DriveId;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.ml.vision.FirebaseVision;
 import com.google.firebase.ml.vision.common.FirebaseVisionImage;
 import com.google.firebase.ml.vision.text.FirebaseVisionText;
@@ -42,11 +45,13 @@ import com.google.firebase.ml.vision.text.FirebaseVisionTextDetector;
 import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -54,7 +59,10 @@ import timber.log.Timber;
 
 import static com.douglasharvey.receipttracker.utilities.ProcessTextRecognition.processTextRecognitionResult;
 
-public class ReceiptActivity extends AppCompatActivity implements DatePickerFragment.EditDateDialogListener {
+public class ReceiptActivity extends BaseDemoActivity implements DatePickerFragment.EditDateDialogListener {
+
+    //TODO need to add delete functionality. Also add/remove attachment.
+
     @BindView(R.id.tv_edit_new_heading)
     TextView tvEditNewHeading;
     @BindView(R.id.tv_ocr_company_name)
@@ -90,98 +98,155 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
     private Bitmap selectedImage;
     private Uri selectedDocument = null;
     private static final int REQUEST_OPEN = 1;
+    private static final int REQUEST_UPLOAD = 2;
     private static final String STATE_SELECTED = "selected";
     BottomSheetBehavior sheetBehavior;
     int peekHeight = 100;
     String sourceFileName;
     File sourceLocation;
     File newFileName;
+    private static Receipt receipt;
+    String[] paymentTypeArray;
+    String[] categoryArray;
+    private int RECEIPT_MODE;
+    private final int ADD_MODE = 1;
+    private final int EDIT_MODE = 2;
+    private final int ADD_MODE_TEXT_ONLY = 3;
+    int existingReceiptID;
+    String existingFileDriveId;
+    String uploadedFileDriveId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.receipt_main);
         ButterKnife.bind(this);
-        Intent intent = getIntent();
-        if (intent.getBooleanExtra(getString(R.string.ADD_RECEIPT_EXTRA), false)) addReceipt();
+        paymentTypeArray = this.getResources().getStringArray(R.array.payment_type_array);
+        categoryArray = this.getResources().getStringArray(R.array.category_array);
+
+        Intent receivedIntent = getIntent();
+        if (receivedIntent.hasExtra(getString(R.string.ADD_RECEIPT_EXTRA))) { // if FAB button was pressed on MainActivity go direct to new receipt import processing.
+            if (receivedIntent.getBooleanExtra(getString(R.string.ADD_RECEIPT_EXTRA), false)) {
+                existingReceiptID = 0;
+                existingFileDriveId = null;
+                if (receivedIntent.getBooleanExtra(getString(R.string.ADD_RECEIPT_EXTRA_TEXTONLY), false)) {
+                    RECEIPT_MODE = ADD_MODE_TEXT_ONLY;
+                    tvEditNewHeading.setText(R.string.header_new_receipt); // No Image text only entry
+                }
+                else {
+                    RECEIPT_MODE = ADD_MODE;
+                    addReceipt();
+                }
+            }
+        }
 
         if (savedInstanceState != null) {
             selectedDocument = savedInstanceState.getParcelable(STATE_SELECTED);
 
             if (selectedDocument != null) {
+                Timber.d("onCreate: show "+selectedDocument.toString());
                 show(selectedDocument);
             }
         }
 
-        fabAddReceipt.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                addReceipt();
-            }
+        fabAddReceipt.setOnClickListener((View view) -> {
+            RECEIPT_MODE = ADD_MODE;
+            addReceipt();
         });
 
-        ivSaveReceipt.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //todo need validation for dates and amounts , name
-                ReceiptRepository receiptRepository = new ReceiptRepository(getApplication());
-                Receipt receipt = new Receipt();
-                receipt.setCompany(etCompanyName.getText().toString());
-                receipt.setAmount(Float.parseFloat(etAmount.getText().toString()));
-                int selectedCategoryPosition = spCategory.getSelectedItemPosition();
-                receipt.setCategory(selectedCategoryPosition);
-                receipt.setComment(etComment.getText().toString());
-                int selectedTypePosition = spPaymentType.getSelectedItemPosition();
-                receipt.setType(selectedTypePosition);
-                receipt.setFile(selectedDocument.toString());
-                DateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
-                try {
-                    receipt.setReceiptDate(formatter.parse(etDate.getText().toString()));
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
-                receiptRepository.insert(receipt);
-                setSourceVariables();
-                // renaming file to app directory prior to uploading to google drive
-                // this will prevent user from trying to add this receipt again.
-                boolean renameResult = renameFile();
+        createSaveReceiptClickListener();
 
-                //when exporting data, can later query metadata to get full link to file
-                //getAlternateLink seems ok.
-                // can do this processing in a service instead, no rush to upload and this way
-                //can easily use the id as part of the file name.
-                //here may consider renaming file into app directory so that is can be reviewed as needed.
-                //need flag on database to show full location.
+        setupBottomSheet();
+
+        initializeEntryFields();
+
+        if (receivedIntent.hasExtra(getString(R.string.EDIT_RECEIPT_EXTRA))) {
+            Bundle data = receivedIntent.getExtras();
+            receipt = data.getParcelable(getString(R.string.EDIT_RECEIPT_EXTRA));
+            existingReceiptID = receipt.getId();
+            existingFileDriveId = receipt.getDriveID();
+            if (existingFileDriveId == null || existingFileDriveId.isEmpty()) sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            Timber.d("onCreate: editReceipt:"+existingFileDriveId);
+            RECEIPT_MODE = EDIT_MODE;
+            editReceipt();
+        }
+    }
+
+    private void createSaveReceiptClickListener() {
+        ivSaveReceipt.setOnClickListener((View view) -> {
+            if (etCompanyName.getText().toString().isEmpty()) {
+                Toast.makeText(ReceiptActivity.this, "Please enter Company Name", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (etAmount.getText().toString().isEmpty()) {
+                Toast.makeText(ReceiptActivity.this, "Please enter Amount", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            //todo need validation for date?
+            if (RECEIPT_MODE == ADD_MODE)
+                setSourceVariables();
+            else if ((RECEIPT_MODE != ADD_MODE_TEXT_ONLY) && receipt.getDriveID()!=null) setSourceVariables();
+            // renaming file to app directory prior to uploading to google drive
+            // this will prevent user from trying to add this receipt again.
+            if (RECEIPT_MODE == ADD_MODE) {
+                boolean renameResult = renameFile();
                 if (renameResult) {
-                    Intent intent = new Intent(ReceiptActivity.this, UploadFileActivity.class);
-                    intent.putExtra(getString(R.string.UPLOAD_FILE_NAME_EXTRA), sourceFileName);
-                    intent.putExtra(getString(R.string.UPLOAD_FILE_LOCATION_EXTRA), newFileName.toString());
-                    startActivity(intent);
+                    Intent uploadIntent = new Intent(ReceiptActivity.this, UploadFileActivity.class);
+                    uploadIntent.putExtra(getString(R.string.UPLOAD_FILE_NAME_EXTRA), sourceFileName);
+                    uploadIntent.putExtra(getString(R.string.UPLOAD_FILE_LOCATION_EXTRA), newFileName.toString());
+                    startActivityForResult(uploadIntent, REQUEST_UPLOAD);
                 }
+                else {
+                    Toast.makeText(this, "Unable to move file", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+            }
+            if ((RECEIPT_MODE == EDIT_MODE) ||
+               (RECEIPT_MODE == ADD_MODE_TEXT_ONLY))
+            {
+                insertReceipt();
                 finish();
             }
-        });
+            //when exporting data, can later query metadata to get full link to file
+            //getAlternateLink seems ok.
+            // can do this processing in a service instead, no rush to upload and this way
+            //can easily use the id as part of the file name.
+            //need flag on database to show full location.
 
-        sheetBehavior = BottomSheetBehavior.from(receiptDetails);
-        sheetBehavior.setPeekHeight(0);
-        sheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
-            @Override
-            public void onStateChanged(@NonNull View bottomSheet, int newState) {
-                if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                    sheetBehavior.setPeekHeight(peekHeight);
-                }
-            }
-
-            @Override
-            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                if (slideOffset == 0) {
-                    fabAddReceipt.show();
-                }
-                if ((slideOffset > 0) && (fabAddReceipt.getVisibility() == View.VISIBLE)) {
-                    fabAddReceipt.hide();
-                }
-            }
         });
+    }
+
+    private void insertReceipt() {
+        Timber.d("insertReceipt: insert");
+        ReceiptRepository receiptRepository = new ReceiptRepository(getApplication());
+        Receipt receipt = new Receipt();
+        receipt.setCompany(etCompanyName.getText().toString());
+        receipt.setAmount(Float.parseFloat(etAmount.getText().toString()));
+        int selectedCategoryPosition = spCategory.getSelectedItemPosition();
+        receipt.setCategory(selectedCategoryPosition);
+        receipt.setComment(etComment.getText().toString());
+        int selectedTypePosition = spPaymentType.getSelectedItemPosition();
+        receipt.setType(selectedTypePosition);
+//        receipt.setFile(selectedDocument.toString()); todo may remove this later
+        DateFormat formatter = new SimpleDateFormat("dd/MM/yyyy", Locale.UK);
+        try {
+            receipt.setReceiptDate(formatter.parse(etDate.getText().toString()));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        Timber.d("insertReceipt: Receipt_mode:"+RECEIPT_MODE);
+        if (RECEIPT_MODE == EDIT_MODE) { //passing existing ID's to delete existing record and add again with the same ID's in one transaction
+            receipt.setId(existingReceiptID);
+            receipt.setDriveID(existingFileDriveId);
+            Timber.d("insertReceipt: existingFileDriveId:"+existingFileDriveId);
+        }
+
+        if (RECEIPT_MODE == ADD_MODE) receipt.setDriveID(uploadedFileDriveId);
+
+        receiptRepository.insert(receipt);
+    }
+
+    private void initializeEntryFields() {
         etDate.setShowSoftInputOnFocus(false);
         ArrayAdapter paymentTypeAdapter = ArrayAdapter.createFromResource(this, R.array.payment_type_array, R.layout.spinner_payment_type);
         paymentTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -194,29 +259,74 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         spCategory.setSelection(1); //default to groceries
     }
 
+    private void setupBottomSheet() {
+        sheetBehavior = BottomSheetBehavior.from(receiptDetails);
+        if (RECEIPT_MODE == ADD_MODE_TEXT_ONLY)
+            sheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        else sheetBehavior.setPeekHeight(0);
+        sheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+            @Override
+            public void onStateChanged(@NonNull View bottomSheet, int newState) {
+                if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
+                    sheetBehavior.setPeekHeight(peekHeight);
+                }
+            }
+
+            @Override
+            public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+                if (slideOffset == 0) {
+                  //todo to be removed  fabAddReceipt.show();
+                }
+                if ((slideOffset > 0) && (fabAddReceipt.getVisibility() == View.VISIBLE)) {
+                    fabAddReceipt.hide();
+                }
+            }
+        });
+    }
+
+    private void editReceipt() {
+        if (receipt.getFile()!=null) selectedDocument = Uri.parse(receipt.getFile());
+//        show(selectedDocument); todo
+        tvEditNewHeading.setText(R.string.header_edit_receipt);
+        etCompanyName.setText(receipt.getCompany());
+        etAmount.setText(new DecimalFormat("######.00").format(receipt.getAmount()));
+        Date receiptDate = receipt.getReceiptDate();
+        DateFormat formatter = new SimpleDateFormat("dd/MM/yyyy", Locale.UK);
+        etDate.setText(formatter.format(receiptDate));
+        sheetBehavior.setPeekHeight(peekHeight);
+        setSpinnerToValue(spPaymentType, paymentTypeArray[receipt.getType()]);
+        setSpinnerToValue(spCategory, categoryArray[receipt.getCategory()]);
+        etComment.setText(receipt.getComment());
+        //todo add savereceipt processing with update to database, try to integrate with existing add proeessing
+        // also add delete processing - delete record but keep receipt document where it is.
+    }
+
     private boolean renameFile() {
         newFileName = new File(this.getExternalFilesDir(null), "/" + sourceFileName);
         //todo need to add obtain permissions code see busy coder or easypermissions
         //or manually update permission after each clean install!
 
         //todo consider whether to update file field on database
-        //TODO java.lang.NullPointerException: Attempt to invoke virtual method 'boolean java.io.File.renameTo(java.io.File)' on a null object reference
-        //this happens when file is on google drive?
-        boolean renameResult = sourceLocation.renameTo(newFileName);
-        if (renameResult) {
-            Toast.makeText(this, "Move file successful", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "Move file failed: check permissions", Toast.LENGTH_SHORT).show();
-        }
+        boolean renameResult = false;
+        if (sourceLocation != null && sourceLocation.exists()) {
+            renameResult = sourceLocation.renameTo(newFileName);
+            if (renameResult)
+                Toast.makeText(this, "Move file successful", Toast.LENGTH_SHORT).show();
+            else
+                Toast.makeText(this, "Move file failed: check permissions", Toast.LENGTH_SHORT).show();
+
+        } else
+            Toast.makeText(this, "File cannot be selected from here (google drive)", Toast.LENGTH_SHORT).show();
+
         return renameResult;
     }
 
-    private boolean setSourceVariables() {
+    private void setSourceVariables() {
         sourceLocation = null;
 
         try {
             String path = FileUtils.getPath(this, selectedDocument);
-            if (path == null) return true;
+            if (path == null) return;
             sourceLocation = new File(path);
         } catch (Exception e) {
             e.printStackTrace();
@@ -224,7 +334,6 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         Timber.d("setSourceVariables: sourceLocation: " + sourceLocation.toString());
 
         sourceFileName = sourceLocation.getName();
-        return false;
     }
 
     public void setSpinnerToValue(Spinner spinner, String value) {
@@ -266,17 +375,56 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
     @Override
     protected void onActivityResult(int requestCode, int resultCode,
                                     Intent data) {
+        Timber.d("onActivityResult: "+resultCode+" "+requestCode );
         if (resultCode == Activity.RESULT_OK) {
-            selectedDocument = data.getData();
-            show(selectedDocument);
-            runTextRecognition();
+            if (requestCode == REQUEST_OPEN) {
+                selectedDocument = data.getData();
+                boolean showResult = show(selectedDocument);
+                if (showResult) runTextRecognition();
+                else Toast.makeText(this, "Unable to show document", Toast.LENGTH_SHORT).show();
+            }
+            if (requestCode == REQUEST_UPLOAD) {
+                Timber.d("onActivityResult: request_upload");
+                uploadedFileDriveId = data.getStringExtra("createdDriveID");
+                Timber.d("onActivityResult: uploadedID:"+uploadedFileDriveId);
+                insertReceipt();
+                finish();
+            }
         }
     }
 
-    private void show(Uri selectedDocument) {
+    @Override
+    protected void onDriveClientReady() {
+        Timber.d("onDriveClientReady: mode:"+RECEIPT_MODE);
+        if (RECEIPT_MODE == EDIT_MODE) downloadExistingFile();
+    }
+
+    private void downloadExistingFile() {
+        String driveId = receipt.getDriveID();
+        if (driveId==null) {
+            return;
+        }
+        DriveId driveIdtoDownload = DriveId.decodeFromString(receipt.getDriveID());
+        DriveFile driveFile = driveIdtoDownload.asDriveFile();
+        Task<DriveContents> openFileTask =
+                getDriveResourceClient().openFile(driveFile, DriveFile.MODE_READ_WRITE);
+        openFileTask
+                .continueWithTask(task -> {
+                    DriveContents contents = task.getResult();
+                    show(contents.getParcelFileDescriptor());
+
+                    return getDriveResourceClient().discardContents(contents);
+                })
+                .addOnFailureListener(e -> {
+                    Timber.d("downloadExistingFile: Unable to read contents");
+                    showMessage("Unable to read file contents");
+                });
+    }
+
+    private boolean show(Uri selectedDocument) {
+        //todo class is not thread safe
         ParcelFileDescriptor parcelFileDescriptor = null;
-        PdfRenderer renderer = null;
-        selectedImage = null;
+
         try {
             parcelFileDescriptor = this.getContentResolver().openFileDescriptor(
                     selectedDocument, "r");
@@ -284,9 +432,21 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         {
             e.printStackTrace();
         }
-        //todo prevent crash for java.lang.NullPointerException: input cannot be null. must check if file exists above, before attempting to continue
+
+        return show(parcelFileDescriptor);
+    }
+
+    private boolean show (ParcelFileDescriptor parcelFileDescriptor) {
+        PdfRenderer renderer = null;
+        selectedImage = null;
+
+        if (parcelFileDescriptor == null)
+            return false;
         try {
             renderer = new PdfRenderer(parcelFileDescriptor); //todo prevent this warning
+            //TODO W/System.err: java.io.IOException: cannot create document. Error: 3
+            //07-17 22:42:17.640 27688-27688/com.douglasharvey.receipttracker W/System.err:     at android.graphics.pdf.PdfRenderer.nativeCreate(Native Method)
+            //        at android.graphics.pdf.PdfRenderer.<init>(PdfRenderer.java:153)
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -302,8 +462,9 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
         ivPdf.resetScaleAndCenter();
         ivPdf.setImage(ImageSource.cachedBitmap(selectedImage));
         page.close();
-    }
+        return true;
 
+    }
 
     private void runTextRecognition() {
         graphicOverlay.clear();
@@ -314,13 +475,13 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
 
         detector.detectInImage(image)
                 .addOnSuccessListener(
-                        new OnSuccessListener<FirebaseVisionText>() {
+                        new OnSuccessListener<FirebaseVisionText>() { //todo change to lambda
                             @Override
                             public void onSuccess(FirebaseVisionText texts) {
                                 ReceiptResult receiptResult = new ReceiptResult();
 
                                 List<FirebaseVisionText.Element> elements = processTextRecognitionResult(texts, receiptResult);
-                                tvEditNewHeading.setText("New Receipt");
+                                tvEditNewHeading.setText(R.string.header_new_receipt);
                                 tvOcrCompanyName.setText(receiptResult.getCompany());
                                 etCompanyName.setText(receiptResult.getCompany());
                                 String receiptAmount = receiptResult.getAmount();
@@ -342,7 +503,6 @@ public class ReceiptActivity extends AppCompatActivity implements DatePickerFrag
                                 //todo consider removing GraphicOverlay!! not needed & currently does not work with imageview either scaled or not scaled
 //todo performance - : Skipped 138 frames!  The application may be doing too much work on its main thread.
 
-                                //todo latest test on A101  receipt - got KDV instead of Total line
                             }
                         })
                 .addOnFailureListener(

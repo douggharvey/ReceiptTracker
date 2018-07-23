@@ -5,10 +5,16 @@ import android.graphics.Point;
 import com.douglasharvey.receipttracker.data.ReceiptResult;
 import com.google.firebase.ml.vision.text.FirebaseVisionText;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import timber.log.Timber;
+
+import static org.apache.commons.lang3.StringUtils.replace;
 
 public class ProcessTextRecognition {
     private static int toplamYPosition1;
@@ -17,6 +23,7 @@ public class ProcessTextRecognition {
     private static String paymentType;
     private static String receiptDate;
     private static String company;
+    private static String firstWord;
 
     public static List<FirebaseVisionText.Element> processTextRecognitionResult(FirebaseVisionText texts, ReceiptResult receiptResult) {
         toplamYPosition1 = 0;
@@ -25,6 +32,7 @@ public class ProcessTextRecognition {
         paymentType = null;
         receiptDate = null;
         company = null;
+        firstWord = null;
         List<FirebaseVisionText.Element> extractedElements = null;
         List<FirebaseVisionText.Element> allElements = new ArrayList<>();
         List<FirebaseVisionText.Block> blocks = texts.getBlocks();
@@ -49,11 +57,13 @@ public class ProcessTextRecognition {
    */
         Timber.d("processTextRecognitionResult: " +
                 "Company: " + company + "\n"
+                + "First word: " + firstWord + "\n"
                 + "Payment Type: " + paymentType + "\n"
                 + "Amount: " + totalAmount + "\n"
                 + "Date: " + receiptDate + "\n"
         );
-        receiptResult.setCompany(company);
+        if (company == null || company.isEmpty()) receiptResult.setCompany(firstWord);
+        else receiptResult.setCompany(company);
         receiptResult.setAmount(totalAmount);
         receiptResult.setDate(receiptDate);
         receiptResult.setPaymentType(paymentType);
@@ -66,10 +76,11 @@ public class ProcessTextRecognition {
         List<FirebaseVisionText.Element> extractedElements = new ArrayList<>();
         for (int i = 0; i < elements.size(); i++) {
             FirebaseVisionText.Element element = elements.get(i);
-
+            //    if ((i==0)&&(firstWord==null||firstWord.isEmpty())) firstWord = element.getText(); //TODO this doesn't work, seems to get leftmost field first!!
+            Timber.d("filterElements: " + element.getText().toString());
             companyNameExists = companyNameCheck(element.getText());
             paymentTypeExists = paymentTypeCheck(element.getText());
-            dateExists = dateCheck(element.getText());
+            dateExists = dateValidate(element.getText());
 
             if (companyNameExists ||
                     element.getText().contains(",") || // amounts
@@ -85,15 +96,18 @@ public class ProcessTextRecognition {
                         Point cornerPoint = cornerPoints[j];
 
                         if (totalCheck(element.getText())) {
+                            Timber.d("filterElements: totalcheck positive:" + element.getText());
                             if (toplamYPosition1 == 0) toplamYPosition1 = cornerPoint.y;
                             else toplamYPosition2 = cornerPoint.y; // get y position from 2 corners
+                            Timber.d("filterElements: toplamYposition1:" + toplamYPosition1);
+                            Timber.d("filterElements: toplamYposition2:" + toplamYPosition2);
                         } else if (!element.getText().contains(",")) {
                             extractedElements.add(elements.get(i)); // add to output if not related to amount.
                         }
                     }
                 }
             }
-            //  extractedElements.add(elements.get(i));
+           //    extractedElements.add(elements.get(i)); //uncomment this to get all boxes
 /*TODO
 1) İF no match on name, consider getting first line in entirety. or do this instead
   2) image 6 - improve date matching
@@ -110,11 +124,50 @@ public class ProcessTextRecognition {
 
     private static boolean dateCheck(String text) {
         if ((text.contains("/") || (text.contains(".")) || (text.contains("-")))
-                && (text.contains("2") && text.contains("1"))) {
+                && (text.contains("2") && text.contains("1"))
+                && (text.length() <= 17)) {
+            text = replace(text, "-", "/");
+            text = replace(text, ".", "/");
             receiptDate = text;
             return true;
         } else return false;
 
+    }
+
+    private static boolean dateValidate(String date) {
+        date=replace(date,"TARIH","");
+        Timber.d("dateValidate: "+date);
+        DateFormat format = new SimpleDateFormat("dd/MM/yyyy", Locale.UK);
+
+        format.setLenient(false);
+
+        try {
+            format.parse(date);
+            receiptDate = date;
+            Timber.d("dateValidate: 1-returning true");
+            return true;
+        } catch (ParseException e) {
+            Timber.d("dateValidate: 1-parse exception");
+        }
+        format = new SimpleDateFormat("dd.MM.yyyy", Locale.UK);
+        try {
+            format.parse(date);
+            receiptDate = date;
+            Timber.d("dateValidate: 2-returning true");
+            return true;
+        } catch (ParseException e) {
+            Timber.d("dateValidate: 2-parse exception");
+        }
+        format = new SimpleDateFormat("dd-MM-yyyy", Locale.UK);
+        try {
+            format.parse(date);
+            receiptDate = date;
+            Timber.d("dateValidate: 2-returning true");
+            return true;
+        } catch (ParseException e) {
+            Timber.d("dateValidate: 2-parse exception");
+        }
+        return false;
     }
 
     private static boolean paymentTypeCheck(String text) {
@@ -129,8 +182,11 @@ public class ProcessTextRecognition {
     }
 
     private static boolean companyNameCheck(String text) {
+        // Timber.d("companyNameCheck: text:"+text);
         if (text.contains("A101") ||
+                text.contains("A01") ||
                 text.contains("BIM") ||
+                text.contains("BtM") ||
                 text.contains("TAHTAKALE") ||
                 text.contains("MANGAL") ||
                 text.contains("PİY") || //TODO
@@ -138,17 +194,32 @@ public class ProcessTextRecognition {
                 text.contains("LC") ||
                 text.contains("ECZ") ||
                 text.contains("BİM") ||
+                text.contains("BiM") ||
                 text.contains("MIGR") ||
                 text.contains("ŞOK") ||
-                text.contains("SOK")) {
+                text.contains("sOK") ||
+                text.contains("şoK") ||
+                text.contains("SOKM") ||
+                (text.contains("SOK") && !text.contains("."))) { //todo consider capitalizing text before continuing
+            text = replace(text, "SOKMARKET.COM", "ŞOK");
+            text = replace(text, "BtM", "BİM");
+            text = replace(text, "BtM", "BİM");
+            text = replace(text, "BIM", "BİM");
+            text = replace(text, "BiM", "BİM");
+            text = replace(text, "sOK", "ŞOK");
+            text = replace(text, "SOK", "ŞOK");
+            text = replace(text, "şoK", "ŞOK");
+            text = replace(text, "A01", "A101");
+            text = replace(text, ".", "");
             company = text;
             return true;
         } else return false;
     }
 
     private static boolean totalCheck(String text) {
-        // WHAT ABOUT T O P L A M
-        return (text.contains("TOP") && (!text.contains("KDV")) ); // consider TUTAR for credit card receipts
+        return (text.contains("TOP") && (!text.contains("KDV")));
+
+//                (text.contains("UTARI"))); //*TODO Added for credit card processing but not very successful. Consider TL as alternative. get Y position then amount to the left
     }
 
     private static void findTotalAmount(List<FirebaseVisionText.Element> elements, List<FirebaseVisionText.Element> extractedElements) {
@@ -156,12 +227,21 @@ public class ProcessTextRecognition {
         int tolerance = 10;
         for (int k = 0; k < elements.size(); k++) {
             FirebaseVisionText.Element element = elements.get(k);
+            Timber.d("findTotalAmount: " + element.getText());
             Point[] cornerPoints = element.getCornerPoints();
+            Timber.d("findTotalAmount: " + cornerPoints[0].y);
+            Timber.d("findTotalAmount: " + cornerPoints[1].y);
+            Timber.d("findTotalAmount: " + cornerPoints[2].y);
             int averageYPoint = (cornerPoints[0].y + cornerPoints[2].y) / 2;
             if (!element.getText().contains("TOP"))  // total)
             {
+                Timber.d("findTotalAmount: toplamYPosition1:" + toplamYPosition1);
+                Timber.d("findTotalAmount: toplamYPosition2:" + toplamYPosition2);
+                Timber.d("findTotalAmount: averageYPoint:" + averageYPoint);
+
                 if ((toplamYPosition1 - tolerance < averageYPoint) && (averageYPoint < toplamYPosition2 + tolerance)) {
                     extractedElements.add(elements.get(k));
+                    Timber.d("findTotalAmount: set totalamount" + element.getText());
                     totalAmount = element.getText();
                 }
             }

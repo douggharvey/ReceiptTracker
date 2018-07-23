@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -19,6 +18,11 @@ import com.douglasharvey.receipttracker.adapters.ReceiptListAdapter;
 import com.douglasharvey.receipttracker.data.Receipt;
 import com.douglasharvey.receipttracker.data.ReceiptRepository;
 import com.douglasharvey.receipttracker.data.ReceiptViewModel;
+import com.github.clans.fab.FloatingActionMenu;
+import com.google.android.gms.drive.DriveFile;
+import com.google.android.gms.drive.DriveId;
+import com.google.android.gms.drive.Metadata;
+import com.google.android.gms.tasks.Task;
 import com.opencsv.CSVWriter;
 
 import java.io.File;
@@ -32,18 +36,27 @@ import java.util.Locale;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 import timber.log.Timber;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseDemoActivity {
 
     @BindView(R.id.rv_receipts)
     RecyclerView rvReceipts;
     @BindView(R.id.fab_add_receipt)
     FloatingActionButton fabAddReceipt;
-    private ReceiptViewModel receiptViewModel;
+    ReceiptViewModel receiptViewModel;
     String[] categoryArray;
     String[] paymentTypeArray;
-    boolean exportMenuItemActive=true;
+    boolean exportMenuItemActive = true;
+    @BindView(R.id.receipt_action_import)
+    com.github.clans.fab.FloatingActionButton receiptActionImport;
+    @BindView(R.id.receipt_action_text)
+    com.github.clans.fab.FloatingActionButton receiptActionText;
+    @BindView(R.id.receipt_action_camera)
+    com.github.clans.fab.FloatingActionButton receiptActionCamera;
+    @BindView(R.id.fab_menu)
+    FloatingActionMenu fabMenu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,8 +71,8 @@ public class MainActivity extends AppCompatActivity {
         rvReceipts.setAdapter(adapter);
         rvReceipts.setLayoutManager(new LinearLayoutManager(this));
         rvReceipts.setHasFixedSize(true);
-        RecyclerView.ItemDecoration itemDecoration = new // TODO divider not working - colours?
-                DividerItemDecoration(this, DividerItemDecoration.HORIZONTAL);
+        RecyclerView.ItemDecoration itemDecoration = new
+                DividerItemDecoration(MainActivity.this, LinearLayoutManager.VERTICAL);
         rvReceipts.addItemDecoration(itemDecoration);
 
         receiptViewModel = ViewModelProviders.of(this).get(ReceiptViewModel.class);
@@ -69,16 +82,36 @@ public class MainActivity extends AppCompatActivity {
                 adapter.setReceipts(receipts);
             }
         });
-        fabAddReceipt.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, ReceiptActivity.class);
-                intent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA), true);
-                //startActivityForResult(intent, NEW_RECEIPT_ACTIVITY_REQUEST_CODE);
-                startActivity(intent);
-            }
-        }); //TODO NEED RESULT?
+        fabAddReceipt.setOnClickListener((View view) -> {
+            Intent addReceiptIntent = new Intent(MainActivity.this, ReceiptActivity.class);
+            addReceiptIntent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA), true);
+            startActivity(addReceiptIntent);
+        });
 
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        fabMenu.close(false);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        ReceiptRepository repository = new ReceiptRepository(getApplication());
+        List<Receipt> receiptList = repository.getBlankWebLinks();
+
+        //todo move off main thread
+        for (Receipt receipt : receiptList
+                ) {
+            if (receipt.getDriveID()!=null) {
+                DriveId driveIdtoDownload = DriveId.decodeFromString(receipt.getDriveID());
+                DriveFile driveFile = driveIdtoDownload.asDriveFile();
+
+                retrieveMetadata(receipt.getId(), driveFile);
+            }
+        }
     }
 
     @Override
@@ -95,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (id == R.id.menu_export) {
 
-            exportMenuItemActive=false;
+            exportMenuItemActive = false;
             invalidateOptionsMenu();
 
             //todo add dialog for date selecton for date range, send criteria to dao
@@ -108,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
             FileOutputStream fos;
 
 
-            try { //todo decide file location. upload to google drive?
+            try {
                 fos = new FileOutputStream(sourceLocation, false);
                 fileWriter = new FileWriter(fos.getFD());
             } catch (IOException e1) {
@@ -119,22 +152,18 @@ public class MainActivity extends AppCompatActivity {
             ReceiptRepository repository = new ReceiptRepository(getApplication());
             List<Receipt> receiptList = repository.getReceipts();
 
-            //todo need to finish here.
-            //dao will be a join to get category.
-            //move off main thread
-            //finalize formatting
+            //todo move off main thread, finalize formatting
             for (Receipt receipt : receiptList
                     ) {
-                String[] fields = new String[7];
+                String[] fields = new String[8];
                 fields[0] = paymentTypeArray[receipt.getType()];
-                fields[1] = receipt.getCompany();
-                fields[2] = String.valueOf(receipt.getAmount());
-                fields[3] = new SimpleDateFormat("dd-MM-yy", Locale.UK).format(receipt.getReceiptDate());
-                fields[4] = categoryArray[receipt.getCategory()];
-                fields[5] = receipt.getComment();
-                fields[6] = receipt.getFile();
-
-
+                fields[1] = new SimpleDateFormat("dd-MM-yy", Locale.UK).format(receipt.getReceiptDate());
+                fields[2] = receipt.getCompany();
+                fields[3] = categoryArray[receipt.getCategory()];
+                fields[4] = receipt.getComment();
+                fields[5] = String.valueOf(receipt.getAmount() * -1);
+                fields[6] = ""; //blank field for total in Excel
+                fields[7] = receipt.getWebLink();
                 csvWriter.writeNext(fields);
             }
             //todo add closes refer
@@ -146,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
             }
             try {
                 fileWriter.close();
-            } catch (NullPointerException | IOException e ) {
+            } catch (NullPointerException | IOException e) {
                 e.printStackTrace();
             }
             //fos.close();
@@ -157,17 +186,61 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra(getString(R.string.UPLOAD_FILE_LOCATION_EXTRA), sourceLocation.toString());
             startActivity(intent);
             Timber.d("onOptionsItemSelected: upload to drive started");
-            exportMenuItemActive=true;
+            exportMenuItemActive = true;
             invalidateOptionsMenu();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
+
     @Override
-    public boolean onPrepareOptionsMenu (Menu menu){
+    public boolean onPrepareOptionsMenu(Menu menu) {
         super.onPrepareOptionsMenu(menu);
         MenuItem export = menu.findItem(R.id.menu_export);
         export.setEnabled(exportMenuItemActive);
         return true;
+    }
+
+    @Override
+    protected void onDriveClientReady() {
+        // showMessage("Drive client Ready");
+    }
+
+    private void retrieveMetadata(final long recordId, final DriveFile file) {
+        Task<Metadata> getMetadataTask = getDriveResourceClient().getMetadata(file);
+        getMetadataTask
+                .addOnSuccessListener(this,
+                        metadata -> {
+                            updateLink(recordId, metadata.getAlternateLink());
+                        })
+                .addOnFailureListener(this, e -> {
+                    Timber.d("retrieveMetadata: metadata read failed");
+//                    finish();
+                });
+    }
+
+    private void updateLink(long recordId, String link) {
+        ReceiptRepository repository = new ReceiptRepository(getApplication());
+        repository.updateWebLink(link, recordId);
+    }
+
+    @OnClick({R.id.receipt_action_import, R.id.receipt_action_text, R.id.receipt_action_camera})
+    public void onViewClicked(View view) {
+        Intent addReceiptIntent;
+        switch (view.getId()) {
+            case R.id.receipt_action_import:
+                addReceiptIntent = new Intent(MainActivity.this, ReceiptActivity.class);
+                addReceiptIntent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA), true);
+                startActivity(addReceiptIntent);
+                break;
+            case R.id.receipt_action_text:
+                addReceiptIntent = new Intent(MainActivity.this, ReceiptActivity.class);
+                addReceiptIntent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA), true);
+                addReceiptIntent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA_TEXTONLY), true);
+                startActivity(addReceiptIntent);
+                break;
+            case R.id.receipt_action_camera:
+                break;
+        }
     }
 }

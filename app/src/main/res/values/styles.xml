@@ -27,4 +27,31 @@
         <item name="android:paddingLeft">8dp</item>
     </style>
 
+    <style name="Widget">
+    </style>
+
+    <style name="Widget.SmartReceipts">
+    </style>
+
+    <style name="Widget.SmartReceipts.FloatingActionButton">
+        <item name="fab_colorNormal">@color/colorAccent</item>
+        <item name="fab_colorPressed">@color/colorAccent</item>
+        <item name="fab_colorRipple">@color/colorAccent</item>
+        <item name="fab_size">normal</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_alignParentBottom">true</item>
+        <item name="android:layout_alignParentRight">true</item>
+        <item name="android:layout_marginRight">@dimen/fab_margin</item>
+        <item name="android:layout_marginBottom">@dimen/fab_margin</item>
+        <item name="android:layout_marginLeft">@dimen/fab_margin</item>
+    </style>
+
+    <style name="Widget.SmartReceipts.FloatingActionButton.Menu">
+        <item name="menu_colorNormal">@color/colorAccent</item>
+        <item name="menu_colorPressed">@color/colorAccent</item>
+        <item name="menu_colorRipple">@color/colorAccent</item>
+        <item name="menu_animationDelayPerItem">50</item>
+    </style>
+
 </resources>

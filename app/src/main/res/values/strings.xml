@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">ReceiptTracker</string>
     <string name="ADD_RECEIPT_EXTRA">ADD_RECEIPT_EXTRA</string>
+    <string name="ADD_RECEIPT_EXTRA_TEXTONLY">ADD_RECEIPT_EXTRA_TEXTONLY</string>
+
+    <string name="EDIT_RECEIPT_EXTRA">EDIT_RECEIPT_EXTRA</string>
     <string name="file_created">Created file: %1$s.</string>
     <string name="file_create_error">Error while trying to create the file.</string>
     <string name="UPLOAD_FILE_NAME_EXTRA">UPLOAD_FILE_NAME</string>
@@ -11,4 +14,13 @@
     <string name="receiptTrackerFolderIDmissing">missing</string>
     <string name="receiptTrackerFolderTitle">ReceiptTracker</string>
     <string name="menu_export_heading">Export</string>
+    <string name="header_edit_receipt">Edit Receipt</string>
+    <string name="header_new_receipt">New Receipt</string>
+    <string name="metadata_retrieved">Metadata successfully fetched. Title: %1$s</string>
+
+    <!-- ================= Receipt Actions =================== -->
+    <string name="receipt_action_camera">Picture</string>
+    <string name="receipt_action_text">Text-Only</string>
+    <string name="receipt_action_import">Import</string>
+
 </resources>

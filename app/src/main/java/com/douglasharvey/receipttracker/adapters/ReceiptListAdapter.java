@@ -1,6 +1,7 @@
 package com.douglasharvey.receipttracker.adapters;
 
 import android.content.Context;
+import android.content.Intent;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.douglasharvey.receipttracker.R;
+import com.douglasharvey.receipttracker.activities.ReceiptActivity;
 import com.douglasharvey.receipttracker.data.Receipt;
 
 import java.text.DecimalFormat;
@@ -68,6 +70,15 @@ public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.
             holder.tvCategory.setText(categoryArray[current.getCategory()]);
             holder.tvComment.setText(current.getComment());
             holder.tvPaymentType.setText(paymentTypeArray[current.getType()]);
+            holder.itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intent = new Intent(view.getContext(), ReceiptActivity.class);
+                    intent.putExtra(view.getContext().getString(R.string.EDIT_RECEIPT_EXTRA), current);
+                    view.getContext().startActivity(intent);
+                }
+            });
+
         } else {
             // Covers the case of data not being ready yet.
             holder.tvCompany.setText("No Receipt");
