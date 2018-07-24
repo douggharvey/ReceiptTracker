@@ -34,6 +34,10 @@ public class ReceiptRepository {
         new insertAsyncTask(receiptDao).execute(receipt);
     }
 
+    public void delete (int receiptId) {
+        receiptDao.delete(receiptId);
+    }
+
     private static class insertAsyncTask extends AsyncTask<Receipt, Void, Long> {
 
         private ReceiptDao asyncTaskDao;
@@ -44,7 +48,7 @@ public class ReceiptRepository {
 
         @Override
         protected Long doInBackground(final Receipt... params) {
-            if (params[0].getId()!=0) asyncTaskDao.delete(params[0].getId());
+        //    if (params[0].getId()!=0) asyncTaskDao.delete(params[0].getId());
             long insertedRowId = asyncTaskDao.insert(params[0]);
             return insertedRowId;
         }

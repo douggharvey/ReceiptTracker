@@ -9,7 +9,9 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.view.ActionMode;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 
@@ -18,6 +20,7 @@ import com.douglasharvey.receipttracker.adapters.ReceiptListAdapter;
 import com.douglasharvey.receipttracker.data.Receipt;
 import com.douglasharvey.receipttracker.data.ReceiptRepository;
 import com.douglasharvey.receipttracker.data.ReceiptViewModel;
+import com.douglasharvey.receipttracker.interfaces.LongClickCallBack;
 import com.github.clans.fab.FloatingActionMenu;
 import com.google.android.gms.drive.DriveFile;
 import com.google.android.gms.drive.DriveId;
@@ -39,7 +42,8 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import timber.log.Timber;
 
-public class MainActivity extends BaseDemoActivity {
+public class MainActivity extends BaseDemoActivity
+        implements LongClickCallBack {
 
     @BindView(R.id.rv_receipts)
     RecyclerView rvReceipts;
@@ -57,6 +61,40 @@ public class MainActivity extends BaseDemoActivity {
     com.github.clans.fab.FloatingActionButton receiptActionCamera;
     @BindView(R.id.fab_menu)
     FloatingActionMenu fabMenu;
+    int deleteId;
+    ReceiptListAdapter adapter=null;
+
+    private ActionMode currentActionMode;
+    private ActionMode.Callback modeCallBack =
+            new ActionMode.Callback() {
+                @Override
+                public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+                    MenuInflater inflater = mode.getMenuInflater();
+                    inflater.inflate(R.menu.menu_edit_mode, menu);
+                    return true;
+                }
+
+                @Override
+                public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+                    return false;
+                }
+
+                @Override
+                public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+                    ReceiptRepository repository = new ReceiptRepository(getApplication());
+                    adapter.clearSelection();
+                    repository.delete(deleteId);
+                    mode.finish();
+                    return true;
+                }
+
+                @Override
+                public void onDestroyActionMode(ActionMode mode) {
+                    adapter.clearSelection();
+                    currentActionMode = null;
+                }
+
+            };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,7 +105,7 @@ public class MainActivity extends BaseDemoActivity {
         categoryArray = this.getResources().getStringArray(R.array.category_array);
         paymentTypeArray = this.getResources().getStringArray(R.array.payment_type_array);
 
-        final ReceiptListAdapter adapter = new ReceiptListAdapter(this);
+        adapter = new ReceiptListAdapter(this, this);
         rvReceipts.setAdapter(adapter);
         rvReceipts.setLayoutManager(new LinearLayoutManager(this));
         rvReceipts.setHasFixedSize(true);
@@ -105,7 +143,7 @@ public class MainActivity extends BaseDemoActivity {
         //todo move off main thread
         for (Receipt receipt : receiptList
                 ) {
-            if (receipt.getDriveID()!=null) {
+            if (receipt.getDriveID() != null) {
                 DriveId driveIdtoDownload = DriveId.decodeFromString(receipt.getDriveID());
                 DriveFile driveFile = driveIdtoDownload.asDriveFile();
 
@@ -243,4 +281,14 @@ public class MainActivity extends BaseDemoActivity {
                 break;
         }
     }
+
+    @Override
+    public void triggerEditMode(int receiptId) {
+        if (currentActionMode == null) {
+            currentActionMode = startActionMode(modeCallBack);
+        }
+        this.deleteId = receiptId;
+    }
+
+
 }

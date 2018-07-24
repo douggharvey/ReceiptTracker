@@ -34,9 +34,9 @@ public class Receipt implements Parcelable {
 
     private String comment;
 
-   // @ColumnInfo(name = "drive_id")
+    @ColumnInfo(name = "drive_id")
     private String driveID;
-    //@ColumnInfo(name = "web_link")
+    @ColumnInfo(name = "web_link")
     private String webLink;
 
     public Receipt() {

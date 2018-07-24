@@ -5,7 +5,7 @@ import android.arch.persistence.room.Room;
 import android.arch.persistence.room.RoomDatabase;
 import android.content.Context;
 
-@Database(entities = {Receipt.class}, version = 7)
+@Database(entities = {Receipt.class}, version = 8)
 public abstract class ReceiptRoomDatabase extends RoomDatabase {
     public abstract ReceiptDao receiptDao();
 
@@ -19,6 +19,7 @@ public abstract class ReceiptRoomDatabase extends RoomDatabase {
                             ReceiptRoomDatabase.class, "receipt_database")
                            // .fallbackToDestructiveMigration() //TODO lost data on upgrade!! because of this?
                             .allowMainThreadQueries() // TODO temporary
+                            .addMigrations(Migrations.FROM_7_TO_8)
                             .build();
                 }
             }
