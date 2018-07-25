@@ -20,7 +20,7 @@ import com.douglasharvey.receipttracker.adapters.ReceiptListAdapter;
 import com.douglasharvey.receipttracker.data.Receipt;
 import com.douglasharvey.receipttracker.data.ReceiptRepository;
 import com.douglasharvey.receipttracker.data.ReceiptViewModel;
-import com.douglasharvey.receipttracker.interfaces.LongClickCallBack;
+import com.douglasharvey.receipttracker.interfaces.LongClickItemCallBack;
 import com.github.clans.fab.FloatingActionMenu;
 import com.google.android.gms.drive.DriveFile;
 import com.google.android.gms.drive.DriveId;
@@ -43,7 +43,7 @@ import butterknife.OnClick;
 import timber.log.Timber;
 
 public class MainActivity extends BaseDemoActivity
-        implements LongClickCallBack {
+        implements LongClickItemCallBack {
 
     @BindView(R.id.rv_receipts)
     RecyclerView rvReceipts;
@@ -62,7 +62,7 @@ public class MainActivity extends BaseDemoActivity
     @BindView(R.id.fab_menu)
     FloatingActionMenu fabMenu;
     int deleteId;
-    ReceiptListAdapter adapter=null;
+    ReceiptListAdapter adapter = null;
 
     private ActionMode currentActionMode;
     private ActionMode.Callback modeCallBack =
@@ -71,6 +71,7 @@ public class MainActivity extends BaseDemoActivity
                 public boolean onCreateActionMode(ActionMode mode, Menu menu) {
                     MenuInflater inflater = mode.getMenuInflater();
                     inflater.inflate(R.menu.menu_edit_mode, menu);
+                    mode.setTitle("Confirm deletion");
                     return true;
                 }
 
@@ -204,8 +205,7 @@ public class MainActivity extends BaseDemoActivity
                 fields[7] = receipt.getWebLink();
                 csvWriter.writeNext(fields);
             }
-            //todo add closes refer
-            // https://gist.github.com/zafe/dfd6a8d0101fc7e3307e
+            //todo add closes refer https://gist.github.com/zafe/dfd6a8d0101fc7e3307e
             try {
                 csvWriter.close();
             } catch (IOException e) {
@@ -241,7 +241,7 @@ public class MainActivity extends BaseDemoActivity
 
     @Override
     protected void onDriveClientReady() {
-        // showMessage("Drive client Ready");
+
     }
 
     private void retrieveMetadata(final long recordId, final DriveFile file) {
@@ -253,7 +253,6 @@ public class MainActivity extends BaseDemoActivity
                         })
                 .addOnFailureListener(this, e -> {
                     Timber.d("retrieveMetadata: metadata read failed");
-//                    finish();
                 });
     }
 
@@ -277,7 +276,7 @@ public class MainActivity extends BaseDemoActivity
                 addReceiptIntent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA_TEXTONLY), true);
                 startActivity(addReceiptIntent);
                 break;
-            case R.id.receipt_action_camera:
+            case R.id.receipt_action_camera: //Camera option inactive for now.
                 break;
         }
     }
@@ -289,6 +288,5 @@ public class MainActivity extends BaseDemoActivity
         }
         this.deleteId = receiptId;
     }
-
 
 }

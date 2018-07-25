@@ -30,6 +30,7 @@ import com.douglasharvey.receipttracker.data.Receipt;
 import com.douglasharvey.receipttracker.data.ReceiptRepository;
 import com.douglasharvey.receipttracker.data.ReceiptResult;
 import com.douglasharvey.receipttracker.fragments.DatePickerFragment;
+import com.douglasharvey.receipttracker.utilities.DateUtils;
 import com.douglasharvey.receipttracker.utilities.FileUtils;
 import com.google.android.gms.drive.DriveContents;
 import com.google.android.gms.drive.DriveFile;
@@ -61,7 +62,7 @@ import static com.douglasharvey.receipttracker.utilities.ProcessTextRecognition.
 
 public class ReceiptActivity extends BaseDemoActivity implements DatePickerFragment.EditDateDialogListener {
 
-    //TODO need to add delete functionality. Also add/remove attachment.
+    //TODO add/remove attachment.
 
     @BindView(R.id.tv_edit_new_heading)
     TextView tvEditNewHeading;
@@ -132,6 +133,7 @@ public class ReceiptActivity extends BaseDemoActivity implements DatePickerFragm
                 if (receivedIntent.getBooleanExtra(getString(R.string.ADD_RECEIPT_EXTRA_TEXTONLY), false)) {
                     RECEIPT_MODE = ADD_MODE_TEXT_ONLY;
                     tvEditNewHeading.setText(R.string.header_new_receipt); // No Image text only entry
+                    etDate.setText(DateUtils.getTodaysDate());
                 }
                 else {
                     RECEIPT_MODE = ADD_MODE;
@@ -207,17 +209,10 @@ public class ReceiptActivity extends BaseDemoActivity implements DatePickerFragm
                 insertReceipt();
                 finish();
             }
-            //when exporting data, can later query metadata to get full link to file
-            //getAlternateLink seems ok.
-            // can do this processing in a service instead, no rush to upload and this way
-            //can easily use the id as part of the file name.
-            //need flag on database to show full location.
-
         });
     }
 
     private void insertReceipt() {
-        Timber.d("insertReceipt: insert");
         ReceiptRepository receiptRepository = new ReceiptRepository(getApplication());
         Receipt receipt = new Receipt();
         receipt.setCompany(etCompanyName.getText().toString());

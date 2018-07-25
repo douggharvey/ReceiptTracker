@@ -65,6 +65,7 @@ public class ProcessTextRecognition {
         if (company == null || company.isEmpty()) receiptResult.setCompany(firstWord);
         else receiptResult.setCompany(company);
         receiptResult.setAmount(totalAmount);
+        if (receiptDate==null) receiptDate=DateUtils.getTodaysDate();
         receiptResult.setDate(receiptDate);
         receiptResult.setPaymentType(paymentType);
         return extractedElements; // also above items!
@@ -136,7 +137,6 @@ public class ProcessTextRecognition {
 
     private static boolean dateValidate(String date) {
         date=replace(date,"TARIH","");
-        Timber.d("dateValidate: "+date);
         DateFormat format = new SimpleDateFormat("dd/MM/yyyy", Locale.UK);
 
         format.setLenient(false);
@@ -144,7 +144,6 @@ public class ProcessTextRecognition {
         try {
             format.parse(date);
             receiptDate = date;
-            Timber.d("dateValidate: 1-returning true");
             return true;
         } catch (ParseException e) {
             Timber.d("dateValidate: 1-parse exception");
@@ -153,7 +152,6 @@ public class ProcessTextRecognition {
         try {
             format.parse(date);
             receiptDate = date;
-            Timber.d("dateValidate: 2-returning true");
             return true;
         } catch (ParseException e) {
             Timber.d("dateValidate: 2-parse exception");
@@ -162,7 +160,6 @@ public class ProcessTextRecognition {
         try {
             format.parse(date);
             receiptDate = date;
-            Timber.d("dateValidate: 2-returning true");
             return true;
         } catch (ParseException e) {
             Timber.d("dateValidate: 2-parse exception");
@@ -201,8 +198,9 @@ public class ProcessTextRecognition {
                 text.contains("şoK") ||
                 text.contains("SOKM") ||
                 (text.contains("SOK") && !text.contains("."))) { //todo consider capitalizing text before continuing
-            text = replace(text, "SOKMARKET.COM", "ŞOK");
-            text = replace(text, "BtM", "BİM");
+            //TODO ŞOK RECEİPTS NOT GETTING FROM FIRST HEADING
+            text = replace(text, "SOKMARKET", "ŞOK");
+            text = replace(text, "COM.TR", "");
             text = replace(text, "BtM", "BİM");
             text = replace(text, "BIM", "BİM");
             text = replace(text, "BiM", "BİM");
@@ -227,21 +225,21 @@ public class ProcessTextRecognition {
         int tolerance = 10;
         for (int k = 0; k < elements.size(); k++) {
             FirebaseVisionText.Element element = elements.get(k);
-            Timber.d("findTotalAmount: " + element.getText());
+//            Timber.d("findTotalAmount: " + element.getText());
             Point[] cornerPoints = element.getCornerPoints();
-            Timber.d("findTotalAmount: " + cornerPoints[0].y);
-            Timber.d("findTotalAmount: " + cornerPoints[1].y);
-            Timber.d("findTotalAmount: " + cornerPoints[2].y);
+//            Timber.d("findTotalAmount: " + cornerPoints[0].y);
+//            Timber.d("findTotalAmount: " + cornerPoints[1].y);
+//           Timber.d("findTotalAmount: " + cornerPoints[2].y);
             int averageYPoint = (cornerPoints[0].y + cornerPoints[2].y) / 2;
             if (!element.getText().contains("TOP"))  // total)
             {
-                Timber.d("findTotalAmount: toplamYPosition1:" + toplamYPosition1);
-                Timber.d("findTotalAmount: toplamYPosition2:" + toplamYPosition2);
-                Timber.d("findTotalAmount: averageYPoint:" + averageYPoint);
+//                Timber.d("findTotalAmount: toplamYPosition1:" + toplamYPosition1);
+//                Timber.d("findTotalAmount: toplamYPosition2:" + toplamYPosition2);
+//                Timber.d("findTotalAmount: averageYPoint:" + averageYPoint);
 
                 if ((toplamYPosition1 - tolerance < averageYPoint) && (averageYPoint < toplamYPosition2 + tolerance)) {
                     extractedElements.add(elements.get(k));
-                    Timber.d("findTotalAmount: set totalamount" + element.getText());
+//                    Timber.d("findTotalAmount: set totalamount" + element.getText());
                     totalAmount = element.getText();
                 }
             }

@@ -12,7 +12,7 @@ import android.widget.TextView;
 import com.douglasharvey.receipttracker.R;
 import com.douglasharvey.receipttracker.activities.ReceiptActivity;
 import com.douglasharvey.receipttracker.data.Receipt;
-import com.douglasharvey.receipttracker.interfaces.LongClickCallBack;
+import com.douglasharvey.receipttracker.interfaces.LongClickItemCallBack;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -22,7 +22,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 
 public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.ReceiptViewHolder> {
-    private LongClickCallBack longClickCallBack;
+    private LongClickItemCallBack longClickItemCallBack;
     Context context;
     private int selectedPos = RecyclerView.NO_POSITION;
 
@@ -50,10 +50,10 @@ public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.
     private final LayoutInflater inflater;
     private List<Receipt> receipts;
 
-    public ReceiptListAdapter(Context context, LongClickCallBack longClickCallBack) {
+    public ReceiptListAdapter(Context context, LongClickItemCallBack longClickItemCallBack) {
         inflater = LayoutInflater.from(context);
         this.context = context;
-        this.longClickCallBack = longClickCallBack;
+        this.longClickItemCallBack = longClickItemCallBack;
     }
 
     public void clearSelection() {
@@ -95,7 +95,7 @@ public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.
             //may pass back to activity to activate actionmode
             holder.itemView.setOnLongClickListener(
                     v -> {
-                        longClickCallBack.triggerEditMode(current.getId());
+                        longClickItemCallBack.triggerEditMode(current.getId());
                         notifyItemChanged(selectedPos);
                         selectedPos = position;
                         notifyItemChanged(selectedPos);

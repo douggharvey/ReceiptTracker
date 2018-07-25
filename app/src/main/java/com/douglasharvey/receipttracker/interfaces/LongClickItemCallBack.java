@@ -1,5 +1,5 @@
 package com.douglasharvey.receipttracker.interfaces;
 
-public interface LongClickCallBack {
+public interface LongClickItemCallBack {
     void triggerEditMode(int receiptId);
 }
