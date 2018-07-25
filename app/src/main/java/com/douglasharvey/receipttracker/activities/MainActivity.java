@@ -1,10 +1,8 @@
 package com.douglasharvey.receipttracker.activities;
 
-import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
@@ -115,12 +113,7 @@ public class MainActivity extends BaseDemoActivity
         rvReceipts.addItemDecoration(itemDecoration);
 
         receiptViewModel = ViewModelProviders.of(this).get(ReceiptViewModel.class);
-        receiptViewModel.getAllReceipts().observe(this, new Observer<List<Receipt>>() {
-            @Override
-            public void onChanged(@Nullable final List<Receipt> receipts) {
-                adapter.setReceipts(receipts);
-            }
-        });
+        receiptViewModel.getAllReceipts().observe(this, receipts -> adapter.setReceipts(receipts));
         fabAddReceipt.setOnClickListener((View view) -> {
             Intent addReceiptIntent = new Intent(MainActivity.this, ReceiptActivity.class);
             addReceiptIntent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA), true);

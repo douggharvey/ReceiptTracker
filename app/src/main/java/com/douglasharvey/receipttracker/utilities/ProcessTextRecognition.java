@@ -198,7 +198,7 @@ public class ProcessTextRecognition {
                 text.contains("şoK") ||
                 text.contains("SOKM") ||
                 (text.contains("SOK") && !text.contains("."))) { //todo consider capitalizing text before continuing
-            //TODO ŞOK RECEİPTS NOT GETTING FROM FIRST HEADING
+            //TODO ŞOK RECEİPTS NOT GETTING FROM FIRST HEADING - if I see Şok can just put Şok
             text = replace(text, "SOKMARKET", "ŞOK");
             text = replace(text, "COM.TR", "");
             text = replace(text, "BtM", "BİM");

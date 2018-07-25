@@ -88,11 +88,7 @@ public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.
                 intent.putExtra(view.getContext().getString(R.string.EDIT_RECEIPT_EXTRA), current);
                 view.getContext().startActivity(intent);
             });
-            //todo p. 1387 busy coder's guide re: action modes
-            //https://guides.codepath.com/android/Menus-and-Popups#contextual-action-modes
-            //https://stackoverflow.com/questions/30166888/cannot-resolve-method-startactionmode-while-using-contextual-action-bar-for-a
-            //https://developer.android.com/reference/android/app/Activity#startActionMode(android.view.ActionMode.Callback)
-            //may pass back to activity to activate actionmode
+            //Send back to Activity to create Contextual Action Menu
             holder.itemView.setOnLongClickListener(
                     v -> {
                         longClickItemCallBack.triggerEditMode(current.getId());

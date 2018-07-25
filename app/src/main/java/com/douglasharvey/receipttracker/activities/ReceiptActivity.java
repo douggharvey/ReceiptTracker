@@ -35,8 +35,6 @@ import com.douglasharvey.receipttracker.utilities.FileUtils;
 import com.google.android.gms.drive.DriveContents;
 import com.google.android.gms.drive.DriveFile;
 import com.google.android.gms.drive.DriveId;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.ml.vision.FirebaseVision;
 import com.google.firebase.ml.vision.common.FirebaseVisionImage;
@@ -470,44 +468,36 @@ public class ReceiptActivity extends BaseDemoActivity implements DatePickerFragm
 
         detector.detectInImage(image)
                 .addOnSuccessListener(
-                        new OnSuccessListener<FirebaseVisionText>() { //todo change to lambda
-                            @Override
-                            public void onSuccess(FirebaseVisionText texts) {
-                                ReceiptResult receiptResult = new ReceiptResult();
+                        texts -> {
+                            ReceiptResult receiptResult = new ReceiptResult();
 
-                                List<FirebaseVisionText.Element> elements = processTextRecognitionResult(texts, receiptResult);
-                                tvEditNewHeading.setText(R.string.header_new_receipt);
-                                tvOcrCompanyName.setText(receiptResult.getCompany());
-                                etCompanyName.setText(receiptResult.getCompany());
-                                String receiptAmount = receiptResult.getAmount();
-                                tvOcrAmount.setText(receiptAmount);
-                                etAmount.setText(extractAmount(receiptAmount));
-                                tvOcrDate.setText(receiptResult.getDate());
-                                etDate.setText(extractDate(receiptResult.getDate()));
-                                tvOcrPaymentType.setText(receiptResult.getPaymentType());
-                                setPaymentTypeSpinner(receiptResult);
-                                sheetBehavior.setPeekHeight(peekHeight);
-                                spCategory.setSelection(1); // default to groceries
+                            List<FirebaseVisionText.Element> elements = processTextRecognitionResult(texts, receiptResult);
+                            tvEditNewHeading.setText(R.string.header_new_receipt);
+                            tvOcrCompanyName.setText(receiptResult.getCompany());
+                            etCompanyName.setText(receiptResult.getCompany());
+                            String receiptAmount = receiptResult.getAmount();
+                            tvOcrAmount.setText(receiptAmount);
+                            etAmount.setText(extractAmount(receiptAmount));
+                            tvOcrDate.setText(receiptResult.getDate());
+                            etDate.setText(extractDate(receiptResult.getDate()));
+                            tvOcrPaymentType.setText(receiptResult.getPaymentType());
+                            setPaymentTypeSpinner(receiptResult);
+                            sheetBehavior.setPeekHeight(peekHeight);
+                            spCategory.setSelection(1); // default to groceries
 
-                                if (elements != null) {
-                                    for (int m = 0; m < elements.size(); m++) {
-                                        GraphicOverlay.Graphic textGraphic = new TextGraphic(graphicOverlay, elements.get(m));
-                                        graphicOverlay.add(textGraphic);
-                                    }
+                            if (elements != null) {
+                                for (int m = 0; m < elements.size(); m++) {
+                                    GraphicOverlay.Graphic textGraphic = new TextGraphic(graphicOverlay, elements.get(m));
+                                    graphicOverlay.add(textGraphic);
                                 }
-                                //todo consider removing GraphicOverlay!! not needed & currently does not work with imageview either scaled or not scaled
+                            }
+                            //todo consider removing GraphicOverlay!! not needed & currently does not work with imageview either scaled or not scaled
 //todo performance - : Skipped 138 frames!  The application may be doing too much work on its main thread.
 
-                            }
                         })
                 .addOnFailureListener(
-                        new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                // Task failed with an exception
-                                //     mButton.setEnabled(true);
-                                e.printStackTrace();
-                            }
+                        e -> {
+                            e.printStackTrace();
                         });
     }
 
@@ -558,7 +548,7 @@ public class ReceiptActivity extends BaseDemoActivity implements DatePickerFragm
 
     public void showDatePickerDialog(View v) {
 
-        DateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        DateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.UK);
 
         DialogFragment newFragment = new DatePickerFragment();
         String dateText = etDate.getText().toString();
@@ -590,7 +580,7 @@ public class ReceiptActivity extends BaseDemoActivity implements DatePickerFragm
 
     @Override
     public void onFinishEditDialog(int year, int month, int day) {
-        etDate.setText(day + "/" + (month + 1) + "/" + year); //todo correctly format the date
+        etDate.setText(DateUtils.formatDate(year,month,day));
     }
 
 

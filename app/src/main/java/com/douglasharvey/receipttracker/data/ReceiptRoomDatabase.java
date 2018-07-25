@@ -17,7 +17,6 @@ public abstract class ReceiptRoomDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                             ReceiptRoomDatabase.class, "receipt_database")
-                           // .fallbackToDestructiveMigration() //TODO lost data on upgrade!! because of this?
                             .allowMainThreadQueries() // TODO temporary
                             .addMigrations(Migrations.FROM_7_TO_8)
                             .build();

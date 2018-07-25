@@ -7,8 +7,11 @@ public class Migrations {
     static final Migration FROM_7_TO_8=new Migration(7,8) {
         @Override
         public void migrate(SupportSQLiteDatabase db) {
+// As SQLite does not have a rename column command, the below method is used to
+// rename the existing table & create a new table with the altered columns.
+// From the renamed table, the data is imported to the new table
+// then the renamed table is dropped.
             db.execSQL("ALTER TABLE receipt_table RENAME to receipt_table_old");
-            //db.execSQL("DROP INDEX `index_receipt_table_receipt_date`");
             db.execSQL("CREATE TABLE IF NOT EXISTS `receipt_table` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL," +
                     " `company` TEXT, `amount` REAL NOT NULL, `receipt_date` INTEGER, `file` TEXT, `type` INTEGER NOT NULL," +
                     " `category` INTEGER NOT NULL, `comment` TEXT, `drive_id` TEXT, `web_link` TEXT)");

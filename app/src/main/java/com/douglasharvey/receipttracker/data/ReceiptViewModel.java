@@ -22,7 +22,8 @@ public class ReceiptViewModel extends AndroidViewModel {
         return allReceipts;
     }
 
-    public void insert(Receipt receipt) {
+  /*  public void insert(Receipt receipt) {
         repository.insert(receipt);
     }
+    */
 }
