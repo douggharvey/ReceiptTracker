@@ -61,6 +61,7 @@ public class ReceiptListAdapter extends RecyclerView.Adapter<ReceiptListAdapter.
         selectedPos = RecyclerView.NO_POSITION;
         notifyItemChanged(previouslySelected);
     }
+
     @Override
     public ReceiptViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View itemView = inflater.inflate(R.layout.receipt_item, parent, false);

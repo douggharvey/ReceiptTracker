@@ -30,6 +30,7 @@ public class UploadFileActivity extends BaseDemoActivity {
                     .addOnSuccessListener(this,
                             driveId -> {
                                 createReceiptTrackerFolder(driveId.asDriveFolder());
+                                Timber.d("onDriveClientReady: selected folder driveID: "+driveId.encodeToString());
 
                             })
                     .addOnFailureListener(this, e -> {

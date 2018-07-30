@@ -114,6 +114,7 @@ public class MainActivity extends BaseDemoActivity
 
         receiptViewModel = ViewModelProviders.of(this).get(ReceiptViewModel.class);
         receiptViewModel.getAllReceipts().observe(this, receipts -> adapter.setReceipts(receipts));
+        receiptViewModel.getReceiptswithoutWebLink().observe(this, this::updateWebLinks);
         fabAddReceipt.setOnClickListener((View view) -> {
             Intent addReceiptIntent = new Intent(MainActivity.this, ReceiptActivity.class);
             addReceiptIntent.putExtra(getString(R.string.ADD_RECEIPT_EXTRA), true);
@@ -128,16 +129,12 @@ public class MainActivity extends BaseDemoActivity
         fabMenu.close(false);
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        ReceiptRepository repository = new ReceiptRepository(getApplication());
-        List<Receipt> receiptList = repository.getBlankWebLinks();
-
-        //todo move off main thread
+    private void updateWebLinks(List<Receipt> receiptList) {
+        Timber.d("updateWebLinks: "+receiptList.size());
         for (Receipt receipt : receiptList
                 ) {
             if (receipt.getDriveID() != null) {
+                Timber.d("updateWebLinks: "+receipt.getDriveID());
                 DriveId driveIdtoDownload = DriveId.decodeFromString(receipt.getDriveID());
                 DriveFile driveFile = driveIdtoDownload.asDriveFile();
 
@@ -163,65 +160,70 @@ public class MainActivity extends BaseDemoActivity
             exportMenuItemActive = false;
             invalidateOptionsMenu();
 
-            //todo add dialog for date selecton for date range, send criteria to dao
+            receiptViewModel.getAllReceipts().observe(this, this::exportCSVfile);
 
-            //todo refactor in new class?
-            String sourceFileName = "receiptsDOUGLAS.csv";
-            File sourceLocation = new File(this.getExternalFilesDir(null) + "/" + sourceFileName);
-            Writer fileWriter = null;
-            CSVWriter csvWriter;
-            FileOutputStream fos;
-
-
-            try {
-                fos = new FileOutputStream(sourceLocation, false);
-                fileWriter = new FileWriter(fos.getFD());
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-
-            csvWriter = new CSVWriter(fileWriter);
-            ReceiptRepository repository = new ReceiptRepository(getApplication());
-            List<Receipt> receiptList = repository.getReceipts();
-
-            //todo move off main thread, finalize formatting
-            for (Receipt receipt : receiptList
-                    ) {
-                String[] fields = new String[8];
-                fields[0] = paymentTypeArray[receipt.getType()];
-                fields[1] = new SimpleDateFormat("dd-MM-yy", Locale.UK).format(receipt.getReceiptDate());
-                fields[2] = receipt.getCompany();
-                fields[3] = categoryArray[receipt.getCategory()];
-                fields[4] = receipt.getComment();
-                fields[5] = String.valueOf(receipt.getAmount() * -1);
-                fields[6] = ""; //blank field for total in Excel
-                fields[7] = receipt.getWebLink();
-                csvWriter.writeNext(fields);
-            }
-            //todo add closes refer https://gist.github.com/zafe/dfd6a8d0101fc7e3307e
-            try {
-                csvWriter.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            try {
-                fileWriter.close();
-            } catch (NullPointerException | IOException e) {
-                e.printStackTrace();
-            }
-            //fos.close();
-            Timber.d("onOptionsItemSelected: file written");
-
-            Intent intent = new Intent(MainActivity.this, UploadFileActivity.class);
-            intent.putExtra(getString(R.string.UPLOAD_FILE_NAME_EXTRA), sourceFileName);
-            intent.putExtra(getString(R.string.UPLOAD_FILE_LOCATION_EXTRA), sourceLocation.toString());
-            startActivity(intent);
-            Timber.d("onOptionsItemSelected: upload to drive started");
             exportMenuItemActive = true;
             invalidateOptionsMenu();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void exportCSVfile(List<Receipt> receiptList) {
+        //todo add dialog for date selecton for date range, send criteria to dao
+
+        //todo refactor in new class?
+        String sourceFileName = "receiptsDOUGLAS.csv";
+        File sourceLocation = new File(this.getExternalFilesDir(null) + "/" + sourceFileName);
+        Writer fileWriter = null;
+        CSVWriter csvWriter;
+        FileOutputStream fos;
+
+
+        try {
+            fos = new FileOutputStream(sourceLocation, false);
+            fileWriter = new FileWriter(fos.getFD());
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+
+        csvWriter = new CSVWriter(fileWriter);
+
+
+        //todo move off main thread, finalize formatting
+        for (Receipt receipt : receiptList
+                ) {
+            String[] fields = new String[8];
+            fields[0] = paymentTypeArray[receipt.getType()];
+            fields[1] = new SimpleDateFormat("dd-MM-yy", Locale.UK).format(receipt.getReceiptDate());
+            fields[2] = receipt.getCompany();
+            fields[3] = categoryArray[receipt.getCategory()];
+            fields[4] = receipt.getComment();
+            fields[5] = String.valueOf(receipt.getAmount() * -1);
+            fields[6] = ""; //blank field for total in Excel
+            fields[7] = receipt.getWebLink();
+            csvWriter.writeNext(fields);
+        }
+        //todo add closes refer https://gist.github.com/zafe/dfd6a8d0101fc7e3307e
+        try {
+            csvWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            fileWriter.close();
+        } catch (NullPointerException | IOException e) {
+            e.printStackTrace();
+        }
+        //fos.close();
+        Timber.d("onOptionsItemSelected: file written");
+
+        Intent intent = new Intent(MainActivity.this, UploadFileActivity.class);
+        intent.putExtra(getString(R.string.UPLOAD_FILE_NAME_EXTRA), sourceFileName);
+        intent.putExtra(getString(R.string.UPLOAD_FILE_LOCATION_EXTRA), sourceLocation.toString());
+        startActivity(intent);
+
+        Timber.d("onOptionsItemSelected: upload to drive started");
     }
 
     @Override
@@ -234,7 +236,7 @@ public class MainActivity extends BaseDemoActivity
 
     @Override
     protected void onDriveClientReady() {
-
+        Timber.d("onDriveClientReady: ");
     }
 
     private void retrieveMetadata(final long recordId, final DriveFile file) {
@@ -242,6 +244,8 @@ public class MainActivity extends BaseDemoActivity
         getMetadataTask
                 .addOnSuccessListener(this,
                         metadata -> {
+                            Timber.d("retrieveMetadata: content availablity:"+metadata.getContentAvailability());
+                            Timber.d("retrieveMetadata: pinned:"+metadata.isPinned());
                             updateLink(recordId, metadata.getAlternateLink());
                         })
                 .addOnFailureListener(this, e -> {

@@ -22,5 +22,6 @@
     <string name="receipt_action_camera">Picture</string>
     <string name="receipt_action_text">Text-Only</string>
     <string name="receipt_action_import">Import</string>
+    <string name="toast_open">Could not open the document!</string>
 
 </resources>

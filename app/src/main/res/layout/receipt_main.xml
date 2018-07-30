@@ -9,11 +9,13 @@
     also may consider a viewpager as main entrance like smartreceipts
     consider scrolling especially for landscape
     -->
-    <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
-        android:id="@+id/iv_pdf"
+    <android.support.v7.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/pager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        />
+        android:background="#CCCCCCCC"
+        android:clipToPadding="false" />
+
     <!-- remove later -->
     <com.douglasharvey.receipttracker.activities.GraphicOverlay
         android:id="@+id/graphic_overlay"
@@ -21,16 +23,5 @@
         android:layout_height="match_parent" />
 
     <include layout="@layout/receipt_details" />
-
-    <android.support.design.widget.FloatingActionButton
-        android:id="@+id/fab_add_receipt"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="@dimen/fab_margin"
-        android:tint="@android:color/white"
-        android:visibility="gone"
-        app:fabSize="normal"
-        app:srcCompat="@drawable/ic_add" />
 
 </android.support.design.widget.CoordinatorLayout>
