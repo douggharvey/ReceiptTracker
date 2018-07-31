@@ -133,7 +133,6 @@ public class ReceiptActivity extends BaseDemoActivity
         pager.setLayoutManager(new LinearLayoutManager(this,
                 LinearLayoutManager.VERTICAL, false));
         snapHelper.attachToRecyclerView(pager);
-
         Intent receivedIntent = getIntent();
         if (receivedIntent.hasExtra(getString(R.string.ADD_RECEIPT_EXTRA))) { // if FAB button was pressed on MainActivity go direct to new receipt import processing.
             if (receivedIntent.getBooleanExtra(getString(R.string.ADD_RECEIPT_EXTRA), false)) {
@@ -150,7 +149,6 @@ public class ReceiptActivity extends BaseDemoActivity
                 }
             }
         }
-
         if (savedInstanceState != null) {
             selectedDocument = savedInstanceState.getParcelable(STATE_SELECTED);
 
@@ -202,8 +200,9 @@ public class ReceiptActivity extends BaseDemoActivity
             //todo need validation for date?
             if (RECEIPT_MODE == ADD_MODE)
                 setSourceVariables();
-            else if ((RECEIPT_MODE != ADD_MODE_TEXT_ONLY) && receipt.getDriveID() != null)
-                setSourceVariables();
+            else if ((RECEIPT_MODE != ADD_MODE_TEXT_ONLY) && receipt.getDriveID() != null) {
+             //   setSourceVariables(); //TODO removed due to edit problem, is it needed for another case? If not, remove this else statement
+            }
             // renaming file to app directory prior to uploading to google drive
             // this will prevent user from trying to add this receipt again.
             if (RECEIPT_MODE == ADD_MODE) {
