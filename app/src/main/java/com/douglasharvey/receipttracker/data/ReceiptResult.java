@@ -5,6 +5,7 @@ public class ReceiptResult {
     private String amount;
     private String date;
     private String paymentType;
+    private boolean supplentaryCard;
 
     public void setCompany(String company) {
         this.company = company;
@@ -22,6 +23,9 @@ public class ReceiptResult {
         this.paymentType = paymentType;
     }
 
+    public void setSupplentaryCard(boolean supplentaryCard) {
+        this.supplentaryCard = supplentaryCard;
+    }
     public String getCompany() {
 
         return company;
@@ -38,4 +42,9 @@ public class ReceiptResult {
     public String getPaymentType() {
         return paymentType;
     }
+
+    public boolean isSupplentaryCard() {
+        return supplentaryCard;
+    }
+
 }

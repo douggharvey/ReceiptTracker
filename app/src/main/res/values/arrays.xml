@@ -4,6 +4,8 @@
         <item>Credit Card</item>
         <item>Cash</item>
         <item>Account</item>
+        <item>ATM Card</item>
+        <item>Credit Card(F)</item>
     </string-array>
     <string-array name="category_array">
         <item>[Category]</item>

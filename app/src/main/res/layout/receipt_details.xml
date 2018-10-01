@@ -66,7 +66,7 @@
         android:id="@+id/et_amount"
         style="@style/receipt_detail_style"
         android:hint="Amount"
-        android:inputType="numberDecimal"
+        android:inputType="number|numberSigned|numberDecimal"
         app:layout_constraintBottom_toBottomOf="@+id/tv_ocr_amount"
         app:layout_constraintStart_toEndOf="@id/gl_middle_vertical"
         app:layout_constraintTop_toTopOf="@+id/tv_ocr_amount"

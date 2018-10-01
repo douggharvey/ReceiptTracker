@@ -21,6 +21,7 @@ public class ProcessTextRecognition {
     private static int toplamYPosition2;
     private static String totalAmount;
     private static String paymentType;
+    private static boolean supplementaryCard;
     private static String receiptDate;
     private static String company;
     private static String firstWord;
@@ -33,6 +34,8 @@ public class ProcessTextRecognition {
         receiptDate = null;
         company = null;
         firstWord = null;
+        supplementaryCard = false;
+
         List<FirebaseVisionText.Element> extractedElements = null;
         List<FirebaseVisionText.Element> allElements = new ArrayList<>();
         List<FirebaseVisionText.Block> blocks = texts.getBlocks();
@@ -61,19 +64,21 @@ public class ProcessTextRecognition {
                 + "Payment Type: " + paymentType + "\n"
                 + "Amount: " + totalAmount + "\n"
                 + "Date: " + receiptDate + "\n"
+                + "Supplementary card: " + supplementaryCard + "\n"
         );
         if (company == null || company.isEmpty()) receiptResult.setCompany(firstWord);
         else receiptResult.setCompany(company);
         receiptResult.setAmount(totalAmount);
-        if (receiptDate==null) receiptDate=DateUtils.getTodaysDate();
+        if (receiptDate == null) receiptDate = DateUtils.getTodaysDate();
         receiptResult.setDate(receiptDate);
         receiptResult.setPaymentType(paymentType);
+        receiptResult.setSupplentaryCard(supplementaryCard);
         return extractedElements; // also above items!
 
     }
 
     private static List<FirebaseVisionText.Element> filterElements(List<FirebaseVisionText.Element> elements) {
-        boolean companyNameExists, paymentTypeExists, dateExists;
+        boolean companyNameExists, paymentTypeExists, dateExists, creditCardExists;
         List<FirebaseVisionText.Element> extractedElements = new ArrayList<>();
         for (int i = 0; i < elements.size(); i++) {
             FirebaseVisionText.Element element = elements.get(i);
@@ -82,12 +87,14 @@ public class ProcessTextRecognition {
             companyNameExists = companyNameCheck(element.getText());
             paymentTypeExists = paymentTypeCheck(element.getText());
             dateExists = dateValidate(element.getText());
+            creditCardExists = creditCardCheck(element.getText());
 
             if (companyNameExists ||
                     element.getText().contains(",") || // amounts
                     paymentTypeExists ||
                     totalCheck(element.getText()) ||
-                    dateExists
+                    dateExists ||
+                    creditCardExists
                     ) { //consider "matches" here instead
 
                 Point[] cornerPoints = element.getCornerPoints();
@@ -108,7 +115,7 @@ public class ProcessTextRecognition {
                     }
                 }
             }
-           //    extractedElements.add(elements.get(i)); //uncomment this to get all boxes
+            //    extractedElements.add(elements.get(i)); //uncomment this to get all boxes
 /*TODO
 1) İF no match on name, consider getting first line in entirety. or do this instead
   2) image 6 - improve date matching
@@ -121,6 +128,14 @@ public class ProcessTextRecognition {
         findTotalAmount(elements, extractedElements);
 
         return extractedElements;
+    }
+
+    private static boolean creditCardCheck(String text) {
+        if (text.contains("1026")) {
+            supplementaryCard = true;
+            return true;
+        }
+        return false;
     }
 
     private static boolean dateCheck(String text) {
@@ -136,7 +151,7 @@ public class ProcessTextRecognition {
     }
 
     private static boolean dateValidate(String date) {
-        date=replace(date,"TARIH","");
+        date = replace(date, "TARIH", "");
         DateFormat format = new SimpleDateFormat("dd/MM/yyyy", Locale.UK);
 
         format.setLenient(false);
@@ -220,7 +235,8 @@ public class ProcessTextRecognition {
 //                (text.contains("UTARI"))); //*TODO Added for credit card processing but not very successful. Consider TL as alternative. get Y position then amount to the left
     }
 
-    private static void findTotalAmount(List<FirebaseVisionText.Element> elements, List<FirebaseVisionText.Element> extractedElements) {
+    private static void findTotalAmount
+            (List<FirebaseVisionText.Element> elements, List<FirebaseVisionText.Element> extractedElements) {
         // finds amount at same level as 'toplam' heading
         int tolerance = 10;
         for (int k = 0; k < elements.size(); k++) {

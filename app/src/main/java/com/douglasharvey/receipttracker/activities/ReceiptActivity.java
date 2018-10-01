@@ -514,6 +514,8 @@ public class ReceiptActivity extends BaseDemoActivity
 
     private void setPaymentTypeSpinner(ReceiptResult receiptResult) {
         String paymentType = receiptResult.getPaymentType();
+        boolean supplementaryCard = receiptResult.isSupplentaryCard();
+
         if (paymentType != null && !paymentType.isEmpty()) {
             if ((paymentType.contains("KRE")) ||
                     (paymentType.contains("KART"))) {
@@ -521,6 +523,9 @@ public class ReceiptActivity extends BaseDemoActivity
             }
             if (paymentType.contains("NAK")) {
                 setSpinnerToValue(spPaymentType, "Cash");
+            }
+            if (supplementaryCard) {
+                setSpinnerToValue(spPaymentType, "Credit Card(F)");
             }
         }
     }
