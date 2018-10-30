@@ -38,7 +38,7 @@ public class ProcessTextRecognition {
 
         List<FirebaseVisionText.Element> extractedElements = null;
         List<FirebaseVisionText.Element> allElements = new ArrayList<>();
-        List<FirebaseVisionText.Block> blocks = texts.getBlocks();
+        List<FirebaseVisionText.TextBlock> blocks = texts.getTextBlocks();
 
         if (blocks.size() == 0) {
             //      showToast("No text found");

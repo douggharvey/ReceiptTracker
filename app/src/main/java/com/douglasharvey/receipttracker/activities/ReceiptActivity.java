@@ -42,7 +42,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.ml.vision.FirebaseVision;
 import com.google.firebase.ml.vision.common.FirebaseVisionImage;
 import com.google.firebase.ml.vision.text.FirebaseVisionText;
-import com.google.firebase.ml.vision.text.FirebaseVisionTextDetector;
+import com.google.firebase.ml.vision.text.FirebaseVisionTextRecognizer;
 
 import java.io.File;
 import java.io.IOException;
@@ -474,10 +474,12 @@ public class ReceiptActivity extends BaseDemoActivity
         graphicOverlay.clear();
 
         FirebaseVisionImage image = FirebaseVisionImage.fromBitmap(selectedImage);
-        FirebaseVisionTextDetector detector = FirebaseVision.getInstance()
+        FirebaseVisionTextRecognizer textRecognizer = FirebaseVision.getInstance().getOnDeviceTextRecognizer();
+/*        FirebaseVisionTextDetector detector = FirebaseVision.getInstance()
                 .getVisionTextDetector();
-
-        detector.detectInImage(image)
+*/
+        textRecognizer.processImage(image)
+//        detector.detectInImage(image)
                 .addOnSuccessListener(
                         texts -> {
                             ReceiptResult receiptResult = new ReceiptResult();
